@@ -77,6 +77,42 @@ Then comment on a citation (e.g. «esto es el Código del Trabajo» on
 «artículo 60»): the agent answers on the page and proposes a fix; accept it
 and the agent verifies again.
 
+## Scripted end-to-end demo
+
+`scripts/demo-e2e.mjs` drives the whole loop in one headless Chromium page
+(Playwright, client-side navigation only — the same session shape a lawyer
+gets in a real browser): load the synthetic demo, verify, comment on
+«artículo 60», wait for the agent's suggestion, accept it in the UI, wait
+for the re-verify, comment on «artículo 9999», emit the commitment and
+download its three artifacts.
+
+Prerequisites:
+
+- The dev server running with the engine configured (`DIKE_BIN` or
+  `DIKE_DOCKER_IMAGE` in `.env`) and a model provider in the environment, as
+  above. `AUTH_DISABLED=true` keeps the script login-free.
+- Optional signing: `LEXO_CONTENT_SIGNING_KEY_PATH=<key.pem>` on the dev
+  server makes `emit-commitment` sign (local `DIKE_BIN` only). Without it the
+  run still works but the signature download step fails.
+- `pnpm install` (Playwright is a dev dependency; `pnpm exec playwright
+  install chromium` once if the browser is not cached yet).
+
+```bash
+node scripts/demo-e2e.mjs --out <dir> [--base http://localhost:8080] \
+  [--verifier /path/to/verificar_tercero.py]
+```
+
+`--out` is required and must be outside the repository — every artifact
+lands there: a screenshot per step, `get-brief` JSON snapshots,
+`transcript-<id>.txt` for every chat thread the run touched,
+`commitment.json` / `commitment.sig.json` / `content-signing-key.pub`,
+`verifier.txt` (plus a tampered negative control) when `--verifier` is
+given, and `summary.json` with all checks (verified counts, pack_hash,
+as_of, the thread id of each agent turn and whether they share one thread,
+the art. 60 raw/replacement and trailing-words check, suggestion states,
+signed key_id, verifier exit codes). Exit code is nonzero if a hard step
+fails; soft findings are reported inside `summary.json`.
+
 ## Status
 
 This is the hackathon skeleton: the data model, the actions, the engine

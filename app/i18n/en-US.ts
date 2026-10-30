@@ -145,6 +145,9 @@ const messages = {
     labelRole: "Role",
     labelCommitmentHash: "commitment_hash (SHA-256)",
     labelPubkey: "Public key (content-signing-key.pub)",
+    differentKeyTitle: "Signed with a different key",
+    differentKeyDesc:
+      "Signed with key {{key_id}}, not the Diké key published in KEYS.md ({{published}}). The signature proves the commitment was not altered since it was signed with this key; it does not prove who signed it.",
     offlineTitle: "Offline verification",
     offlineDesc:
       "Save the three downloaded files in one folder. The verifier needs neither Diké's code nor a network connection.",

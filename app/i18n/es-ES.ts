@@ -146,6 +146,9 @@ const messages = {
     labelRole: "Rol",
     labelCommitmentHash: "commitment_hash (SHA-256)",
     labelPubkey: "Clave pública (content-signing-key.pub)",
+    differentKeyTitle: "Firmado con una llave distinta",
+    differentKeyDesc:
+      "Firmado con la llave {{key_id}}, no con la llave de Diké publicada en KEYS.md ({{published}}). La firma prueba que el commitment no se alteró desde que se firmó con esta llave; no prueba quién lo firmó.",
     offlineTitle: "Verificación sin conexión",
     offlineDesc:
       "Guarda los tres archivos descargados en una carpeta. El verificador no necesita el código de Diké ni conexión a la red.",

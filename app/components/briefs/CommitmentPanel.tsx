@@ -48,6 +48,7 @@ export type CommitmentData = {
   pubkey: string | null;
 };
 
+const PUBLISHED_DIKE_KEY_ID = "3c7b3fde075efbe3";
 const DIKE_REPO_KEYS_URL =
   "https://github.com/Grizaceo/dike/blob/main/docs/hackathon/KEYS.md";
 const DIKE_REPO_VERIFIER_URL =
@@ -180,6 +181,21 @@ export default function CommitmentPanel({
             <dt className="text-muted-foreground">{t("commitment.labelCommitmentHash")}</dt>
             <dd className="font-mono break-all">{signature!.commitment_hash}</dd>
           </dl>
+
+          {signature!.key_id !== PUBLISHED_DIKE_KEY_ID && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/40">
+              <p className="flex items-center gap-2 text-xs font-medium">
+                <IconAlertTriangle className="size-4 shrink-0 text-amber-600" />
+                {t("commitment.differentKeyTitle")}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t("commitment.differentKeyDesc", {
+                  key_id: signature!.key_id,
+                  published: PUBLISHED_DIKE_KEY_ID,
+                })}
+              </p>
+            </div>
+          )}
 
           {pubkey && (
             <div className="space-y-1.5">
