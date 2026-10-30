@@ -19,7 +19,7 @@ export default defineAction({
         errorCode: "not_verified",
         statusCode: 409,
       });
-    const { result, commitment, signature } = await runConstancia(brief.body, {
+    const { result, commitment, signature, pubkey } = await runConstancia(brief.body, {
       emitCommitment: true,
     });
     if (!commitment)
@@ -30,7 +30,7 @@ export default defineAction({
     await getDb()
       .update(schema.briefs)
       .set({
-        commitmentJson: JSON.stringify({ commitment, signature }),
+        commitmentJson: JSON.stringify({ commitment, signature, pubkey }),
         updatedAt: new Date().toISOString(),
       })
       .where(eq(schema.briefs.id, briefId));
@@ -39,6 +39,7 @@ export default defineAction({
       signed: Boolean(signature),
       commitment,
       signature,
+      pubkey,
     };
   },
 });

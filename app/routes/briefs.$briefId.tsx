@@ -1,4 +1,5 @@
 import { sendToAgentChat } from "@agent-native/core/client/agent-chat";
+import { useT } from "@agent-native/core/client/i18n";
 import {
   actionErrorMessage,
   useActionMutation,
@@ -24,6 +25,9 @@ import {
   VerdictBadge,
   type CitationStatus,
 } from "@/components/briefs/StatusBadge";
+import CommitmentPanel, {
+  type CommitmentData,
+} from "@/components/briefs/CommitmentPanel";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -76,6 +80,7 @@ function segments(body: string, citations: Citation[]) {
 
 export default function BriefRoute() {
   const { briefId = "" } = useParams();
+  const t = useT();
   const { data, isPending } = useActionQuery("get-brief", { briefId });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -84,20 +89,27 @@ export default function BriefRoute() {
   const verify = useActionMutation("verify-brief", {
     onSuccess: (result) =>
       toast.success(
-        `${result.meta.citas_verificadas}/${result.meta.total_citas} citations verified`,
+        t("brief.metaVerified", {
+          verified: result.meta.citas_verificadas,
+          total: result.meta.total_citas,
+        }),
       ),
-    onError: toastError("Verification failed."),
+    onError: toastError(t("brief.verifyFailed")),
   });
   const update = useActionMutation("update-brief", {
     onSuccess: () => setEditing(false),
-    onError: toastError("Could not save the brief."),
+    onError: toastError(t("brief.saveFailed")),
   });
+  // The panel reads the commitment from get-brief, which every successful
+  // mutation refetches; the server clears it whenever the text changes.
   const commit = useActionMutation("emit-commitment", {
     onSuccess: (result) =>
       toast.success(
-        result.signed ? "Signed commitment emitted" : "Commitment emitted (unsigned)",
+        result.signed
+          ? t("brief.committedSigned")
+          : t("brief.committedUnsigned"),
       ),
-    onError: toastError("Could not emit the commitment."),
+    onError: toastError(t("brief.commitFailed")),
   });
 
   const citations = (data?.citations ?? []) as Citation[];
@@ -118,15 +130,15 @@ export default function BriefRoute() {
   if (!data) {
     return (
       <main className="p-6 text-sm text-muted-foreground">
-        Brief not found.{" "}
-        <Link className="underline" to="/briefs">
-          Back to briefs
+        {t("brief.notFound")} <Link className="underline" to="/briefs">
+          {t("brief.backToBriefs")}
         </Link>
       </main>
     );
   }
 
   const { brief } = data;
+  const commitment = brief.commitment as CommitmentData | null;
   const busy = verify.isPending || update.isPending || commit.isPending;
   const generalNotes = review.filter((r) => !r.citationId);
 
@@ -140,7 +152,7 @@ export default function BriefRoute() {
               to="/briefs"
               className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
             >
-              <IconArrowLeft className="size-3.5" /> Briefs
+              <IconArrowLeft className="size-3.5" /> {t("brief.backToList")}
             </Link>
             <h1 className="mt-1 truncate text-xl font-semibold tracking-tight">
               {brief.title}
@@ -155,10 +167,10 @@ export default function BriefRoute() {
                   disabled={busy}
                   onClick={() => update.mutate({ briefId, body: draft })}
                 >
-                  Save
+                  {t("brief.editSave")}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
-                  Cancel
+                  {t("brief.editCancel")}
                 </Button>
               </>
             ) : (
@@ -170,7 +182,7 @@ export default function BriefRoute() {
                   setEditing(true);
                 }}
               >
-                <IconPencil className="size-4" /> Edit text
+                <IconPencil className="size-4" /> {t("brief.editText")}
               </Button>
             )}
           </div>
@@ -215,30 +227,33 @@ export default function BriefRoute() {
               onClick={() => verify.mutate({ briefId })}
             >
               <IconShieldCheck className="size-4" />
-              {verify.isPending ? "Verifying…" : "Verify with Diké"}
+              {verify.isPending ? t("brief.verifyProgress") : t("brief.verifyButton")}
             </Button>
             <Button
               variant="outline"
               disabled={busy || editing || !brief.verdict}
               onClick={() => commit.mutate({ briefId })}
             >
-              <IconCertificate className="size-4" /> Emit commitment
+              <IconCertificate className="size-4" /> {t("brief.emitCommitment")}
             </Button>
           </div>
           {brief.meta ? (
             <p className="text-xs text-muted-foreground">
-              {brief.meta.citas_verificadas}/{brief.meta.total_citas} verified ·
-              corpus <code>{String(brief.meta.pack_hash).slice(0, 16)}</code> ·
-              as of {brief.meta.as_of}
+              {t("brief.metaVerified", {
+                verified: brief.meta.citas_verificadas,
+                total: brief.meta.total_citas,
+              })}{" "}
+              · {t("brief.metaCorpus")}{" "}
+              <code>{String(brief.meta.pack_hash).slice(0, 16)}</code> ·{" "}
+              {t("brief.metaAsOf", { date: brief.meta.as_of })}
             </p>
           ) : (
             <p className="text-xs text-muted-foreground">
-              Not verified yet. Statuses come only from the Diké engine.
+              {t("brief.notVerified")}
             </p>
           )}
           <p className="text-xs text-muted-foreground">
-            Diké checks that each provision exists, has citable text and was in
-            force. It does not check that it supports your argument.
+            {t("brief.metaChecked")}
           </p>
         </div>
 
@@ -252,14 +267,21 @@ export default function BriefRoute() {
             onSelect={() => setSelectedId(citation.id)}
           />
         ))}
+        {commitment ? <CommitmentPanel data={commitment} /> : null}
 
         {generalNotes.length ? (
           <div className="rounded-xl border border-border bg-card p-4">
-            <h2 className="mb-2 text-sm font-medium">Activity</h2>
+            <h2 className="mb-2 text-sm font-medium">{t("brief.activityTitle")}</h2>
             <ul className="space-y-1.5">
               {generalNotes.map((note) => (
                 <li key={note.id} className="text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">{note.author}</span>{" "}
+                  <span className="font-medium text-foreground">
+                    {note.author === "user"
+                      ? t("brief.authorYou")
+                      : note.author === "agent"
+                        ? t("brief.authorAgent")
+                        : t("brief.authorEngine")}
+                  </span>{" "}
                   {note.body}
                 </li>
               ))}
@@ -284,12 +306,13 @@ function CitationCard({
   selected: boolean;
   onSelect: () => void;
 }) {
+  const t = useT();
   const [comment, setComment] = useState("");
   const decide = useActionMutation("decide-suggestion", {
-    onError: toastError("Could not record the decision."),
+    onError: toastError(t("brief.decideFailed")),
   });
   const addComment = useActionMutation("add-comment", {
-    onError: toastError("Could not save the comment."),
+    onError: toastError(t("brief.commentFailed")),
   });
 
   function askAgent(event: React.FormEvent) {
@@ -334,7 +357,7 @@ function CitationCard({
       ) : null}
       {citation.status !== "verified" && citation.resolution ? (
         <p className="text-xs">
-          Engine: <code>{citation.resolution}</code>
+          {t("brief.engineLabel")}: <code>{citation.resolution}</code>
         </p>
       ) : null}
       {citation.sourceUrl ? (
@@ -344,7 +367,7 @@ function CitationCard({
           rel="noreferrer"
           className="inline-flex items-center gap-1 text-xs text-muted-foreground underline"
         >
-          Source <IconExternalLink className="size-3" />
+          {t("brief.sourceLink")} <IconExternalLink className="size-3" />
         </a>
       ) : null}
 
@@ -355,11 +378,11 @@ function CitationCard({
             className="rounded-lg border border-dashed border-border p-2 text-xs"
           >
             <p>
-              <span className="font-medium">Agent proposes:</span>{" "}
+              <span className="font-medium">{t("brief.agentProposes")}</span>{" "}
               {item.replacement ? (
                 <code>{item.replacement}</code>
               ) : (
-                <em>withdraw this citation</em>
+                <em>{t("brief.withdraw")}</em>
               )}
             </p>
             <p className="mt-1 text-muted-foreground">{item.body}</p>
@@ -372,7 +395,7 @@ function CitationCard({
                     decide.mutate({ suggestionId: item.id, decision: "accepted" })
                   }
                 >
-                  <IconCheck className="size-3.5" /> Accept
+                  <IconCheck className="size-3.5" /> {t("brief.acceptButton")}
                 </Button>
                 <Button
                   size="sm"
@@ -382,17 +405,30 @@ function CitationCard({
                     decide.mutate({ suggestionId: item.id, decision: "rejected" })
                   }
                 >
-                  <IconX className="size-3.5" /> Reject
+                  <IconX className="size-3.5" /> {t("brief.rejectButton")}
                 </Button>
               </div>
             ) : (
-              <p className="mt-1 font-medium capitalize">{item.state}</p>
+              <p className="mt-1 font-medium capitalize">
+                {item.state === "accepted"
+                  ? t("brief.statusAccepted")
+                  : item.state === "rejected"
+                    ? t("brief.statusRejected")
+                    : item.state === "expired"
+                      ? t("brief.statusExpired")
+                      : t("brief.statusPending")}
+              </p>
             )}
           </div>
         ) : (
           <p key={item.id} className="text-xs">
             <span className="font-medium">
-              {item.author === "user" ? "You" : item.author === "agent" ? "Agent" : "Diké"}:
+              {item.author === "user"
+                ? t("brief.authorYou")
+                : item.author === "agent"
+                  ? t("brief.authorAgent")
+                  : t("brief.authorEngine")}
+              :
             </span>{" "}
             {item.body}
           </p>
@@ -403,10 +439,17 @@ function CitationCard({
         <input
           value={comment}
           onChange={(event) => setComment(event.target.value)}
-          placeholder="Tell the agent… e.g. “this is the Código del Trabajo”"
+          placeholder={t("brief.askAgentPlaceholder")}
           className="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
-        <Button type="submit" size="sm" variant="outline" disabled={!comment.trim()}>
+        <Button
+          type="submit"
+          size="sm"
+          variant="outline"
+          disabled={!comment.trim()}
+          aria-label={t("brief.askAgentButton")}
+          title={t("brief.askAgentButton")}
+        >
           <IconMessage className="size-3.5" />
         </Button>
       </form>

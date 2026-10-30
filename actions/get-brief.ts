@@ -69,6 +69,13 @@ export default defineAction({
         verdict: brief.verdict,
         meta: brief.verificationMeta ? JSON.parse(brief.verificationMeta) : null,
         hasCommitment: Boolean(brief.commitmentJson),
+        commitment: brief.commitmentJson
+          ? (JSON.parse(brief.commitmentJson) as {
+              commitment: unknown;
+              signature: unknown;
+              pubkey: string | null;
+            })
+          : null,
         updatedAt: brief.updatedAt,
       },
       citations: citationRows,

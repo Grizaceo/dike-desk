@@ -24,11 +24,13 @@ prompt and the navigation wiring.
 ## Plan to Nov 9
 
 - [x] Skeleton: data model, actions, engine adapter, review screen
-- [ ] End-to-end run against the Docker engine on Windows; fix the adapter's paths
-- [ ] Verify the mapping from engine `resolucion` values to `ambiguous` and `refused` on the demo brief
+- [x] End-to-end run against the Docker engine on Linux (rootless Docker): create → verify (4/6) → emit commitment
+- [ ] Same run on Windows (Docker Desktop); the adapter now mounts with `--mount`, untested there
+- [x] Verify the mapping from engine `resolucion` values on the demo brief: `AMBIGUOUS` → `ambiguous`, `UNRESOLVABLE` → `refused`
 - [ ] Agent loop: comment → `add-comment` reply → `propose-fix` → accept → re-verify
-- [ ] Commitment panel: show the commitment JSON and the offline verification command
-- [ ] English/Spanish UI copy through the template's i18n catalog
+- [x] Commitment panel: summary, JSON download, and the offline verification command when signed (unsigned says there is nothing to verify)
+- [ ] Signed commitment through the app (local engine + content key), checked with `verificar_tercero.py`
+- [ ] English/Spanish UI copy through the template's i18n catalog (brief screen and commitment panel done; list page, status badges, sidebar and engine notes still English)
 - [ ] Optional: suggest a corrected article through IndexO / the legal graph (retrieval only; Diké still decides)
 - [ ] Polish, then record the public Clips demo (synthetic brief only; no private data)
 - [ ] Submit at builder.io/hackathon/submit

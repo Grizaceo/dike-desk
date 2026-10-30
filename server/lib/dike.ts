@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -48,6 +48,8 @@ export type DikeRun = {
   result: DikeResult;
   commitment: unknown | null;
   signature: unknown | null;
+  /** PEM-encoded public content-signing key (only present when --sign was used). */
+  pubkey: string | null;
 };
 
 const TIMEOUT_MS = 120_000;
@@ -94,9 +96,22 @@ export async function runConstancia(
   }
 
   const work = await mkdtemp(path.join(tmpdir(), "dike-desk-"));
+  const docker = Boolean(image);
   try {
     await writeFile(path.join(work, "brief.md"), body, "utf8");
-    const docker = Boolean(image);
+    if (docker) {
+      // The image runs as a non-root user that is a stranger to the host
+      // (rootless Docker maps it to a subordinate uid), so it must be able to
+      // read the brief. The output dir is created here, owned by us and
+      // world-writable: the engine accepts an existing empty dir, and we can
+      // then delete the files it writes even though we do not own them.
+      await chmod(work, 0o755);
+      await chmod(path.join(work, "brief.md"), 0o644);
+      if (opts.emitCommitment) {
+        await mkdir(path.join(work, "out"));
+        await chmod(path.join(work, "out"), 0o777);
+      }
+    }
     const root = docker ? "/work" : work;
     const args = ["constancia", `${root}/brief.md`, "--json"];
     if (opts.emitCommitment) {
@@ -115,8 +130,11 @@ export async function runConstancia(
           "--rm",
           "--network",
           "none",
-          "-v",
-          `${work}:/work`,
+          // --mount takes the host path verbatim, so a Windows path such as
+          // C:\Users\...\Temp\dike-desk-x needs no conversion (unlike -v,
+          // which splits on the drive-letter colon).
+          "--mount",
+          `type=bind,source=${work},target=/work`,
           image!,
           "dike",
           ...args,
@@ -142,19 +160,37 @@ export async function runConstancia(
 
     let commitment: unknown = null;
     let signature: unknown = null;
+    let pubkey: string | null = null;
     if (opts.emitCommitment) {
       commitment = await readJson(path.join(work, "out", "commitment.json"));
       signature = await readJson(path.join(work, "out", "commitment.sig.json"));
+      // The public key is only written when --sign was passed. Reading it here
+      // lets the UI offer the full offline-verification kit without the lawyer
+      // having to go back to the engine.
+      pubkey = await readText(path.join(work, "out", "content-signing-key.pub"));
     }
-    return { result, commitment, signature };
+    return { result, commitment, signature, pubkey };
   } finally {
-    await rm(work, { recursive: true, force: true });
+    // A failed cleanup must not turn a finished verification into an error,
+    // but it leaves a copy of the brief on disk, so say where.
+    await rm(work, { recursive: true, force: true }).catch((error) =>
+      console.error(`[dike] could not remove ${work}:`, error),
+    );
   }
 }
 
 async function readJson(file: string): Promise<unknown | null> {
   try {
     return JSON.parse(await readFile(file, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+/** Read a text file as-is, or null if it doesn't exist (e.g. pubkey when unsigned). */
+async function readText(file: string): Promise<string | null> {
+  try {
+    return await readFile(file, "utf8");
   } catch {
     return null;
   }
