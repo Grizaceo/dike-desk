@@ -324,7 +324,7 @@ function CitationCard({
     addComment.mutate(
       { briefId, citationId: citation.id, body: text },
       {
-        onSuccess: () =>
+        onSuccess: (result) =>
           sendToAgentChat({
             message: text,
             context: JSON.stringify({
@@ -332,6 +332,8 @@ function CitationCard({
               citationId: citation.id,
               citation: citation.raw,
               status: citation.status,
+              commentId: result.id,
+              note: "The lawyer's comment is already saved on the page; reply with add-comment.",
             }),
             submit: true,
             openSidebar: true,
@@ -392,7 +394,25 @@ function CitationCard({
                   size="sm"
                   disabled={decide.isPending}
                   onClick={() =>
-                    decide.mutate({ suggestionId: item.id, decision: "accepted" })
+                    decide.mutate(
+                      { suggestionId: item.id, decision: "accepted" },
+                      {
+                        onSuccess: () =>
+                          sendToAgentChat({
+                            message: t("brief.acceptedAgentMessage", {
+                              citation: citation.raw,
+                            }),
+                            context: JSON.stringify({
+                              briefId,
+                              suggestionId: item.id,
+                              citationId: citation.id,
+                              replacement: item.replacement,
+                            }),
+                            submit: true,
+                            openSidebar: true,
+                          }),
+                      },
+                    )
                   }
                 >
                   <IconCheck className="size-3.5" /> {t("brief.acceptButton")}

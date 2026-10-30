@@ -3,16 +3,15 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb, schema } from "../server/db/index.js";
-import { requireBrief, requireUser } from "../server/lib/briefs.js";
+import { commentAuthor, requireBrief, requireUser } from "../server/lib/briefs.js";
 
 export default defineAction({
   description:
-    "Leave a comment on a brief, optionally anchored to one citation. Lawyers use it to tell the agent what to do next; the agent uses author='agent' to answer on the page.",
+    "Leave a comment on a brief, optionally anchored to one citation. Lawyers use it to tell the agent what to do next; the agent answers the same way. The author is recorded from who calls: the app UI posts as the lawyer, anything else as the agent.",
   schema: z.object({
     briefId: z.string().describe("Brief id"),
     citationId: z.string().optional().describe("Citation the comment is about"),
     body: z.string().min(1).max(4000),
-    author: z.enum(["user", "agent"]).default("user"),
   }),
   run: async (args, ctx) => {
     const ownerEmail = requireUser(ctx);
@@ -39,7 +38,7 @@ export default defineAction({
       briefId: args.briefId,
       citationId: args.citationId ?? null,
       kind: "comment" as const,
-      author: args.author,
+      author: commentAuthor(ctx),
       body: args.body,
       ownerEmail,
       orgId: brief.orgId,

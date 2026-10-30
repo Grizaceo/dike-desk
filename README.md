@@ -68,7 +68,14 @@ pnpm dev
 
 Open `/briefs`, click **Load synthetic demo**, then **Verify with Diké**.
 
-The agent needs a model provider; configure one in the app's agent settings.
+The agent needs a model provider; configure one in the app's agent settings,
+or through the environment. Any OpenAI-compatible endpoint works, e.g. NVIDIA NIM:
+`OPENAI_API_KEY=<key> OPENAI_BASE_URL=https://integrate.api.nvidia.com/v1
+AGENT_ENGINE=ai-sdk:openai AGENT_MODEL=minimaxai/minimax-m3.1-flash pnpm dev`.
+
+Then comment on a citation (e.g. «esto es el Código del Trabajo» on
+«artículo 60»): the agent answers on the page and proposes a fix; accept it
+and the agent verifies again.
 
 ## Status
 

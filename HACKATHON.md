@@ -27,7 +27,20 @@ prompt and the navigation wiring.
 - [x] End-to-end run against the Docker engine on Linux (rootless Docker): create → verify (4/6) → emit commitment
 - [ ] Same run on Windows (Docker Desktop); the adapter now mounts with `--mount`, untested there
 - [x] Verify the mapping from engine `resolucion` values on the demo brief: `AMBIGUOUS` → `ambiguous`, `UNRESOLVABLE` → `refused`
-- [ ] Agent loop: comment → `add-comment` reply → `propose-fix` → accept → re-verify
+- [x] Agent loop: comment → `add-comment` reply → `propose-fix` → accept → re-verify
+  (2026-10-30, in the browser against `pnpm dev`, model `minimaxai/minimax-m3.1-flash`
+  on NVIDIA NIM through the OpenAI-compatible engine). On the synthetic brief:
+  4/6 → comment on «artículo 60» → agent proposes «artículo 60 del Código del
+  Trabajo» → lawyer accepts → agent re-verifies: 5/6, corpus `af1422d66d1e6eee`,
+  as of 2026-10-30; «artículo 9999» stays refused with a withdrawal proposal.
+  Comment author now comes from the caller (UI → user, anything else → agent),
+  accepting a suggestion expires the other pending ones, and accepting hands
+  the re-verify to the agent. The agent cannot decide suggestions
+  (`decide-suggestion` is `uiOnly`; plain HTTP gets 403). Pending: the engine's
+  `cita_raw` can absorb trailing words («… dispone», «… permite al»), so
+  replacements must keep them (now in the prompt, not re-run live); check that
+  follow-ups land in one chat thread in a normal browser session (the scripted
+  run reloaded pages, so each message opened a new thread)
 - [x] Commitment panel: summary, JSON download, and the offline verification command when signed (unsigned says there is nothing to verify)
 - [ ] Signed commitment through the app (local engine + content key), checked with `verificar_tercero.py`
 - [ ] English/Spanish UI copy through the template's i18n catalog (brief screen and commitment panel done; list page, status badges, sidebar and engine notes still English)

@@ -14,7 +14,9 @@ export default defineAction({
     replacement: z
       .string()
       .max(2000)
-      .describe("Exact text to put where the citation is; empty to withdraw it"),
+      .describe(
+        "Exact text that replaces the citation's whole `raw` span from get-brief; empty to withdraw it. The engine's `raw` can include trailing words (e.g. 'artículo 162 del Código del Trabajo dispone'): keep them in the replacement or they are deleted from the brief.",
+      ),
     rationale: z
       .string()
       .min(1)

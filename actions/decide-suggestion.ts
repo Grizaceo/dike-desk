@@ -84,6 +84,15 @@ export default defineAction({
           .update(citations)
           .set({ status: "stale" })
           .where(eq(citations.briefId, item.briefId));
+        await tx
+          .update(reviewItems)
+          .set({ state: "expired", decidedAt: now })
+          .where(
+            and(
+              eq(reviewItems.briefId, item.briefId),
+              eq(reviewItems.state, "pending"),
+            ),
+          );
       }
     });
     return { id: suggestionId, state: decision };

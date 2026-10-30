@@ -38,7 +38,7 @@ Citation review for Chilean legal briefs. `/briefs` lists briefs; `/briefs/:brie
 
 - Only `verify-brief` (the Diké engine) sets citation status. `verified` is the only verified state; `ambiguous`, `refused` and `stale` are not. Never upgrade a status in prose.
 - Fixes go through `propose-fix` (pending suggestion). Only the lawyer decides, in the UI (`decide-suggestion` is `uiOnly`). Accepting changes the text and makes every citation `stale`: verify again.
-- Answer lawyer comments with `add-comment` (`author: "agent"`) so the answer stays on the page.
+- Answer lawyer comments with `add-comment` so the answer stays on the page; the author is recorded from the caller, never from arguments.
 - Diké does not certify that a provision supports the argument. Report `pack_hash` and `as_of` with results.
 - Engine: `server/lib/dike.ts` runs `dike constancia --json` via `DIKE_DOCKER_IMAGE` or `DIKE_BIN`.
 
