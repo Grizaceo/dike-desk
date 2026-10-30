@@ -31,3 +31,25 @@ Use `adding-a-feature` for functional parity and `frontend-design` for a user-fa
 Before building common workspace or agent UI, read `agent-native-toolkit`; for supported customization, read `customizing-agent-native`.
 
 - Guarded verification: run `pnpm agent-native:doctor`; fix findings before done.
+
+## Diké Desk
+
+Citation review for Chilean legal briefs. `/briefs` lists briefs; `/briefs/:briefId` shows the text with every citation the engine reported marked in place, and a review panel. On brief pages `navigation` adds `briefId`.
+
+- Only `verify-brief` (the Diké engine) sets citation status. `verified` is the only verified state; `ambiguous`, `refused` and `stale` are not. Never upgrade a status in prose.
+- Fixes go through `propose-fix` (pending suggestion). Only the lawyer decides, in the UI (`decide-suggestion` is `uiOnly`). Accepting changes the text and makes every citation `stale`: verify again.
+- Answer lawyer comments with `add-comment` (`author: "agent"`) so the answer stays on the page.
+- Diké does not certify that a provision supports the argument. Report `pack_hash` and `as_of` with results.
+- Engine: `server/lib/dike.ts` runs `dike constancia --json` via `DIKE_DOCKER_IMAGE` or `DIKE_BIN`.
+
+| Action          | Purpose                                             |
+| --------------- | --------------------------------------------------- |
+| list-briefs     | Briefs the user can see                             |
+| create-brief    | New brief from text, or `demo: true`                |
+| get-brief       | Text, citations, review ledger                      |
+| update-brief    | Edit title/text (text edits make citations stale)   |
+| verify-brief    | Run Diké, replace citation statuses                 |
+| propose-fix     | Agent suggestion for one citation                   |
+| decide-suggestion | Lawyer accepts/rejects (UI only)                  |
+| add-comment     | Comment on a brief or citation                      |
+| emit-commitment | Engine-emitted commitment of verified citations     |

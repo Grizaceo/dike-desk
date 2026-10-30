@@ -15,6 +15,7 @@ import { openCommandMenu } from "@agent-native/toolkit/app/shared";
 import { AgentNativeIcon } from "@agent-native/toolkit/app/shared/AgentNativeIcon";
 import {
   IconEdit,
+  IconGavel,
   IconHome,
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarLeftExpand,
@@ -151,6 +152,30 @@ function HomeNavLink({ collapsed }: { collapsed: boolean }) {
   }
 
   return <div className="px-2">{link}</div>;
+}
+
+function BriefsNavLink({ collapsed }: { collapsed: boolean }) {
+  const location = useLocation();
+  const active = location.pathname.startsWith("/briefs");
+  return (
+    <div className={collapsed ? undefined : "px-2"}>
+      <Link
+        to="/briefs"
+        aria-current={active ? "page" : undefined}
+        aria-label={collapsed ? "Briefs" : undefined}
+        className={cn(
+          "flex items-center text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+          active && "bg-sidebar-accent",
+          collapsed
+            ? "size-8 justify-center rounded-md"
+            : "h-8 w-full gap-3 rounded-lg px-3 text-sm font-medium",
+        )}
+      >
+        <IconGavel className="size-4 shrink-0" strokeWidth={1.8} />
+        <span className={collapsed ? "sr-only" : "truncate"}>Briefs</span>
+      </Link>
+    </div>
+  );
 }
 
 function ChatThreadsSection({ collapsed }: { collapsed: boolean }) {
@@ -408,6 +433,7 @@ export function Sidebar({
         )}
       >
         <HomeNavLink collapsed={collapsed} />
+        <BriefsNavLink collapsed={collapsed} />
         <ChatThreadsSection collapsed={collapsed} />
       </nav>
 
