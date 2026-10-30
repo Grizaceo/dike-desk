@@ -1,9 +1,10 @@
-import HomePage from "@/components/home/HomePage";
+import { Navigate } from "react-router";
+
 import { APP_TITLE } from "@/lib/app-config";
 
-const SEO_TITLE = `${APP_TITLE} - Open Source AI app starter with actions`;
+const SEO_TITLE = `${APP_TITLE} — citation review for Chilean legal briefs`;
 const SEO_DESCRIPTION =
-  "Open Source starter for agent-native apps with durable chat, shared actions, UI state, tools, and a backend your agent can extend.";
+  "Diké Desk marks every statutory citation in a Chilean legal brief against a dated, hash-identified corpus: verified, ambiguous or refused — and the lawyer decides every fix.";
 
 export function meta() {
   return [
@@ -20,6 +21,8 @@ export function meta() {
   ];
 }
 
+// The workspace starts on the briefs list; /home stays valid for existing
+// links (the nav views, skeleton layout and handoff keys still know it).
 export default function HomeRoute() {
-  return <HomePage />;
+  return <Navigate to="/briefs" replace />;
 }

@@ -15,7 +15,7 @@ import {
   IconShieldCheck,
   IconX,
 } from "@tabler/icons-react";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { toast } from "sonner";
 
@@ -103,14 +103,31 @@ export default function BriefRoute() {
   // The panel reads the commitment from get-brief, which every successful
   // mutation refetches; the server clears it whenever the text changes.
   const commit = useActionMutation("emit-commitment", {
-    onSuccess: (result) =>
+    onSuccess: (result) => {
+      setScrollToCommitment(true);
       toast.success(
         result.signed
           ? t("brief.committedSigned")
           : t("brief.committedUnsigned"),
-      ),
+      );
+    },
     onError: toastError(t("brief.commitFailed")),
   });
+  const commitmentRef = useRef<HTMLDivElement>(null);
+  const [scrollToCommitment, setScrollToCommitment] = useState(false);
+  useEffect(() => {
+    if (!scrollToCommitment || !data?.brief.commitment) return;
+    const el = commitmentRef.current;
+    if (!el) return;
+    const reduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    el.scrollIntoView({
+      behavior: reduced ? "auto" : "smooth",
+      block: "start",
+    });
+    setScrollToCommitment(false);
+  }, [scrollToCommitment, data?.brief.commitment]);
 
   const citations = (data?.citations ?? []) as Citation[];
   const review = (data?.review ?? []) as ReviewItem[];
@@ -267,7 +284,11 @@ export default function BriefRoute() {
             onSelect={() => setSelectedId(citation.id)}
           />
         ))}
-        {commitment ? <CommitmentPanel data={commitment} /> : null}
+        {commitment ? (
+          <div ref={commitmentRef}>
+            <CommitmentPanel data={commitment} />
+          </div>
+        ) : null}
 
         {generalNotes.length ? (
           <div className="rounded-xl border border-border bg-card p-4">

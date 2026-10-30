@@ -19,7 +19,7 @@ For custom branding, keep `server/plugins/agent-native-email-branding.ts` aligne
 
 ## Application state
 
-- `navigation` describes the view and selected ids. Chat is `chat` at `/chat` and `/chat/<threadId>`; the Get started page is `home` at `/home`; `/` opens shared sign-in/signup.
+- `navigation` describes the view and selected ids. Chat is `chat` at `/chat` and `/chat/<threadId>`; `home` at `/home` redirects to `/briefs`; `/` opens shared sign-in/signup.
 - Use `navigate` when supported and `view-screen` for a fresh read of visible details; basic navigation is already in `<current-screen>`.
 
 ## Building a domain app

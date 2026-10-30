@@ -1,8 +1,8 @@
 {
   "name": "dike-desk",
-  "displayName": "Dike Desk",
+  "displayName": "Diké Desk",
   "private": true,
-  "description": "Workspace app for Dike Desk.",
+  "description": "Workspace app for Diké Desk.",
   "type": "module",
   "scripts": {
     "migrate:production": "tsx scripts/migrate-production.ts",
