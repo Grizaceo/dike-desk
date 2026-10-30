@@ -156,13 +156,14 @@ function HomeNavLink({ collapsed }: { collapsed: boolean }) {
 
 function BriefsNavLink({ collapsed }: { collapsed: boolean }) {
   const location = useLocation();
+  const t = useT();
   const active = location.pathname.startsWith("/briefs");
   return (
     <div className={collapsed ? undefined : "px-2"}>
       <Link
         to="/briefs"
         aria-current={active ? "page" : undefined}
-        aria-label={collapsed ? "Briefs" : undefined}
+        aria-label={collapsed ? t("navigation.briefs") : undefined}
         className={cn(
           "flex items-center text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
           active && "bg-sidebar-accent",
@@ -172,7 +173,9 @@ function BriefsNavLink({ collapsed }: { collapsed: boolean }) {
         )}
       >
         <IconGavel className="size-4 shrink-0" strokeWidth={1.8} />
-        <span className={collapsed ? "sr-only" : "truncate"}>Briefs</span>
+        <span className={collapsed ? "sr-only" : "truncate"}>
+          {t("navigation.briefs")}
+        </span>
       </Link>
     </div>
   );

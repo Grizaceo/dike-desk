@@ -60,6 +60,7 @@ const messages = {
     title: "Empieza aquí",
   },
   navigation: {
+    briefs: "Escritos",
     chat: "Chat",
     collapseSidebar: "Contraer barra lateral",
     database: "Base de datos",
@@ -125,6 +126,18 @@ const messages = {
     copy: "Copiar",
     copySuccess: "Copiado al portapapeles",
   },
+  briefs: {
+    title: "Escritos",
+    description:
+      "Pega un escrito. Diké revisa cada cita legal contra un corpus fechado e identificado por hash, y rechaza lo que no puede probar. Tú decides cada corrección.",
+    fieldTitle: "Título",
+    fieldBody: "Texto",
+    bodyPlaceholder: "EN LO PRINCIPAL: …",
+    createButton: "Crear escrito",
+    loadDemo: "Cargar demo sintético",
+    createFailed: "No se pudo crear el escrito.",
+    empty: "Aún no hay escritos.",
+  },
   commitment: {
     emitted: "Commitment emitido",
     signedBadge: "Firmado · key_id {{key_id}}",
@@ -158,6 +171,16 @@ const messages = {
     unsignedDesc:
       "Sin firma, nadie puede saber si este archivo cambió después de que Diké lo emitió. Para firmar commitments, usa un motor local (DIKE_BIN) con una llave de contenido (LEXO_CONTENT_SIGNING_KEY_PATH).",
     offlineDocs: "Documentación completa (KEYS.md)",
+  },
+  status: {
+    verified: "Verificada",
+    ambiguous: "Ambigua",
+    refused: "Rechazada",
+    stale: "Desactualizada — verificar de nuevo",
+  },
+  verdict: {
+    notVerified: "No verificado",
+    hasProblems: "Con problemas",
   },
   root: {
     commandActions: "Acciones",

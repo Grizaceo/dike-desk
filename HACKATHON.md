@@ -36,14 +36,27 @@ prompt and the navigation wiring.
   Comment author now comes from the caller (UI → user, anything else → agent),
   accepting a suggestion expires the other pending ones, and accepting hands
   the re-verify to the agent. The agent cannot decide suggestions
-  (`decide-suggestion` is `uiOnly`; plain HTTP gets 403). Pending: the engine's
-  `cita_raw` can absorb trailing words («… dispone», «… permite al»), so
-  replacements must keep them (now in the prompt, not re-run live); check that
-  follow-ups land in one chat thread in a normal browser session (the scripted
-  run reloaded pages, so each message opened a new thread)
+  (`decide-suggestion` is `uiOnly`; plain HTTP gets 403).
+- [x] Scripted demo `scripts/demo-e2e.mjs` (2026-10-30): the whole loop in one
+  browser page, artifacts outside the repo. All three agent turns (comment,
+  accept, comment on «artículo 9999») land in one chat thread; the earlier
+  multi-thread result came from the old script reloading pages, which gives
+  each load a new browser tab id. Withdrawals: the agent warns that the
+  sentence is left broken and proposes a prose rewrite with `[brackets]`
+  for what only the lawyer can supply (prompt only; decided option (a)).
+  Still not exercised live: replacing a raw that absorbed trailing words
+  («… dispone»). On the synthetic brief the only fixable raw («artículo 60»)
+  has none
 - [x] Commitment panel: summary, JSON download, and the offline verification command when signed (unsigned says there is nothing to verify)
-- [ ] Signed commitment through the app (local engine + content key), checked with `verificar_tercero.py`
-- [ ] English/Spanish UI copy through the template's i18n catalog (brief screen and commitment panel done; list page, status badges, sidebar and engine notes still English)
+- [x] Signed commitment through the app (2026-10-30): local engine
+  (`DIKE_BIN`) + `LEXO_CONTENT_SIGNING_KEY_PATH`, emitted and downloaded from the
+  panel, `verificar_tercero.py` → VERIFICADO (exit 0); a tampered copy → NO
+  VERIFICADO (exit 1). Signed with a **synthetic demo key** (`key_id`
+  `118d413b1af25080`) kept outside the repo, not the key published in
+  Diké's KEYS.md (`3c7b3fde075efbe3`), whose signatures must be logged in the
+  dike repo's signature register. The panel says so when the key_id differs.
+  Pending: a signature with the published key, only if it is logged in that register
+- [x] English/Spanish UI copy through the template's i18n catalog (2026-10-30: brief screen, commitment panel, list page, status/verdict badges, sidebar link). The agent's own replies follow the model's language
 - [ ] Optional: suggest a corrected article through IndexO / the legal graph (retrieval only; Diké still decides)
 - [ ] Polish, then record the public Clips demo (synthetic brief only; no private data)
 - [ ] Submit at builder.io/hackathon/submit

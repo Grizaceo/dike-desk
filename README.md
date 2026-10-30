@@ -77,6 +77,33 @@ Then comment on a citation (e.g. «esto es el Código del Trabajo» on
 «artículo 60»): the agent answers on the page and proposes a fix; accept it
 and the agent verifies again.
 
+## Signed commitments
+
+Signing needs the local engine (`DIKE_BIN=dike`, not Docker) and an Ed25519
+content key, mode 0600, kept outside this repository. The app only passes the
+engine `--sign`; it never reads, generates or moves the key.
+
+```bash
+# Once: create a demo key with the engine's own helper (refuses to overwrite)
+python3 -c "from lexo_cli.content_signing import generar_content_key as g; print(g('~/.config/dike-desk/demo-content-signing-key.pem')[1])"
+
+LEXO_CONTENT_SIGNING_KEY_PATH=~/.config/dike-desk/demo-content-signing-key.pem pnpm dev
+```
+
+On a verified brief, **Emit commitment**, then download `commitment.json`,
+`commitment.sig.json` and `content-signing-key.pub` from the panel into one
+folder and check them offline with Diké's independent verifier
+([`verificar_tercero.py`](https://github.com/Grizaceo/dike/blob/main/docs/hackathon/verificar_tercero.py)):
+
+```bash
+python3 verificar_tercero.py commitment.json commitment.sig.json content-signing-key.pub
+# exit 0 = VERIFICADO, 1 = NO VERIFICADO, 2 = could not evaluate
+```
+
+A demo key proves integrity only against itself: compare the printed `key_id`
+with the one published in Diké's KEYS.md (`3c7b3fde075efbe3`). The panel warns
+when they differ.
+
 ## Scripted end-to-end demo
 
 `scripts/demo-e2e.mjs` drives the whole loop in one headless Chromium page

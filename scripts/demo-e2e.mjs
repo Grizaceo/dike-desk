@@ -175,22 +175,26 @@ function threadMessages(detailBody) {
   return parsed?.messages ?? [];
 }
 
-async function threadHasMarker(threadId, marker) {
+async function threadHasMarker(threadId, marker, since) {
   const { status, body } = await threadDetail(threadId);
   if (status !== 200) return false;
   return threadMessages(body).some(
     (m) =>
       m.message?.role === "user" &&
+      // Older threads can contain the same marker text from a previous run;
+      // only a message newer than `since` belongs to this turn.
+      (!since || new Date(m.message.createdAt ?? 0) >= since) &&
       JSON.stringify(m.message.content ?? "").includes(marker),
   );
 }
 
 // Wait for the agent turn that carries `marker` (substring of the user
-// message). Polls the threads list and /runs/active; a turn is "done" when
-// the run has been inactive for a few consecutive polls (the endpoint can
-// briefly report inactive between run phases) and the marker is visible in
-// the thread. Returns { threadId, sawActive, markerConfirmed }.
-async function waitForTurn(marker, timeoutMs = 420_000) {
+// message) posted at or after `since`. Polls the threads list and
+// /runs/active; a turn is "done" when the run has been inactive for a few
+// consecutive polls (the endpoint can briefly report inactive between run
+// phases) and the marker is visible in the thread.
+// Returns { threadId, sawActive, markerConfirmed }.
+async function waitForTurn(marker, since, timeoutMs = 420_000) {
   const start = Date.now();
   let candidate = null;
   let sawActive = false;
@@ -208,7 +212,7 @@ async function waitForTurn(marker, timeoutMs = 420_000) {
       if (!candidate || !activeIds.includes(candidate)) {
         // Prefer an active thread that already shows our marker.
         for (const id of activeIds) {
-          if (await threadHasMarker(id, marker)) {
+          if (await threadHasMarker(id, marker, since)) {
             candidate = id;
             break;
           }
@@ -220,7 +224,7 @@ async function waitForTurn(marker, timeoutMs = 420_000) {
       inactiveStreak += 1;
       if (
         inactiveStreak >= 3 &&
-        (await threadHasMarker(candidate, marker))
+        (await threadHasMarker(candidate, marker, since))
       ) {
         return { threadId: candidate, sawActive, markerConfirmed: true };
       }
@@ -232,7 +236,7 @@ async function waitForTurn(marker, timeoutMs = 420_000) {
       // No active run yet: the turn may have finished between polls. Look for
       // the marker in the newest threads.
       for (const t of threads) {
-        if (await threadHasMarker(t.id, marker)) {
+        if (await threadHasMarker(t.id, marker, since)) {
           candidate = t.id;
           break;
         }
@@ -248,7 +252,7 @@ async function waitForTurn(marker, timeoutMs = 420_000) {
         threadId: candidate,
         sawActive,
         markerConfirmed: candidate
-          ? await threadHasMarker(candidate, marker)
+          ? await threadHasMarker(candidate, marker, since)
           : false,
       };
     }
@@ -413,8 +417,9 @@ try {
   // --- step 3: comment on «artículo 60», expect a pending suggestion ---
   const card60 = cardByRaw("artículo 60");
   await card60.locator("input").fill("esto es el Código del Trabajo");
+  const t1 = new Date(Date.now() - 30_000);
   await card60.getByRole("button", { name: "Send to agent" }).click();
-  const turn1 = await waitForTurn("esto es el Código del Trabajo");
+  const turn1 = await waitForTurn("esto es el Código del Trabajo", t1);
   threads.comment60 = turn1.threadId;
   log("comment60 turn:", JSON.stringify(turn1));
   const afterComment = await pollBrief(
@@ -447,8 +452,9 @@ try {
   await dump(page, "05-pending-suggestion");
 
   // --- step 4: accept in the UI; the page auto-sends the re-verify message ---
+  const t2 = new Date(Date.now() - 30_000);
   await card60.getByRole("button", { name: "Accept" }).click();
-  const turn2 = await waitForTurn("accepted the suggestion");
+  const turn2 = await waitForTurn("accepted the suggestion", t2);
   threads.accept = turn2.threadId;
   log("accept turn:", JSON.stringify(turn2));
   const afterAccept = await pollBrief(
@@ -503,8 +509,9 @@ try {
   // --- step 5: comment on «artículo 9999» ---
   const card9999 = cardByRaw("artículo 9999");
   await card9999.locator("input").fill("¿qué hacemos con esta cita?");
+  const t3 = new Date(Date.now() - 30_000);
   await card9999.getByRole("button", { name: "Send to agent" }).click();
-  const turn3 = await waitForTurn("qué hacemos con esta cita");
+  const turn3 = await waitForTurn("qué hacemos con esta cita", t3);
   threads.comment9999 = turn3.threadId;
   log("comment9999 turn:", JSON.stringify(turn3));
   await shot(page, "07-comment-9999");
@@ -645,6 +652,26 @@ try {
     );
     summary.verifierTamperedExitCode = neg.code;
     soft("verifierRejectsTampered", neg.code === 1, `exit ${neg.code}`);
+  }
+
+  // --- step 8: es-ES screenshots in a second context (view-only, no agent) ---
+  try {
+    const esCtx = await browser.newContext({
+      locale: "es-ES",
+      viewport: { width: 1600, height: 950 },
+    });
+    const esPage = await esCtx.newPage();
+    await esPage.goto(`${BASE}/briefs`, { waitUntil: "networkidle" });
+    await esPage.screenshot({ path: path.join(OUT, "20-es-briefs.png") });
+    await esPage.goto(`${BASE}/briefs/${briefId}`, {
+      waitUntil: "networkidle",
+    });
+    await esPage.screenshot({ path: path.join(OUT, "21-es-brief.png") });
+    await esCtx.close();
+    soft("esScreenshots", true, "20-es-briefs.png, 21-es-brief.png");
+    log("es-ES screenshots saved");
+  } catch (e) {
+    soft("esScreenshots", false, String(e).slice(0, 200));
   }
 } catch (e) {
   aborted = true;

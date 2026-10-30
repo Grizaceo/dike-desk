@@ -59,6 +59,7 @@ const messages = {
     title: "Get started",
   },
   navigation: {
+    briefs: "Briefs",
     chat: "Chat",
     collapseSidebar: "Collapse sidebar",
     database: "Database",
@@ -124,6 +125,18 @@ const messages = {
     copy: "Copy",
     copySuccess: "Copied to clipboard",
   },
+  briefs: {
+    title: "Briefs",
+    description:
+      "Paste a brief. Diké checks every statutory citation against a dated, hash-identified corpus and refuses what it cannot prove. You decide every fix.",
+    fieldTitle: "Title",
+    fieldBody: "Text",
+    bodyPlaceholder: "EN LO PRINCIPAL: …",
+    createButton: "Create brief",
+    loadDemo: "Load synthetic demo",
+    createFailed: "Could not create the brief.",
+    empty: "No briefs yet.",
+  },
   commitment: {
     emitted: "Commitment emitted",
     signedBadge: "Signed · key_id {{key_id}}",
@@ -157,6 +170,16 @@ const messages = {
     unsignedDesc:
       "Without a signature, nobody can tell whether this file was changed after Diké emitted it. To sign commitments, run a local engine (DIKE_BIN) with a content key (LEXO_CONTENT_SIGNING_KEY_PATH).",
     offlineDocs: "Full documentation (KEYS.md)",
+  },
+  status: {
+    verified: "Verified",
+    ambiguous: "Ambiguous",
+    refused: "Refused",
+    stale: "Stale — verify again",
+  },
+  verdict: {
+    notVerified: "Not verified",
+    hasProblems: "Has problems",
   },
   root: {
     commandActions: "Actions",
