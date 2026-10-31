@@ -5,10 +5,14 @@ import {
   IconCheck,
   IconCopy,
   IconDownload,
-  IconExternalLink,
   IconShieldCheck,
+  IconX,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
+
+import { StatusBadge, type CitationStatus } from "@/components/briefs/StatusBadge";
+import type { VerificationCertificate } from "../../../server/lib/certificate.js";
+import { normalizeBriefText } from "../../../shared/brief-text.js";
 
 /** The public commitment as emitted by `dike constancia --emit-commitment`. */
 export type DikeCommitment = {
@@ -19,17 +23,9 @@ export type DikeCommitment = {
   total_citas: number;
   citas_verificadas: number;
   citas_fallidas: number;
-  normas_verificadas: Array<{
-    gid: string;
-    cuerpo: string;
-    estado: string;
-    texto_hash: string;
-    vigencia: string;
-    vigencia_legible?: string;
-    fuente_url: string;
-  }>;
+  normas_verificadas?: Array<Record<string, unknown>>;
   alcance: string;
-  advertencias: string[];
+  advertencias?: string[];
 };
 
 /** The signature envelope as emitted by `dike constancia --emit-commitment --sign`. */
@@ -46,13 +42,10 @@ export type CommitmentData = {
   commitment: DikeCommitment;
   signature: DikeSignature | null;
   pubkey: string | null;
+  certificate?: VerificationCertificate | undefined;
 };
 
 const PUBLISHED_DIKE_KEY_ID = "3c7b3fde075efbe3";
-const DIKE_REPO_KEYS_URL =
-  "https://github.com/Grizaceo/dike/blob/main/docs/hackathon/KEYS.md";
-const DIKE_REPO_VERIFIER_URL =
-  "https://raw.githubusercontent.com/Grizaceo/dike/main/docs/hackathon/verificar_tercero.py";
 const VERIFY_COMMAND =
   "python3 verificar_tercero.py commitment.json commitment.sig.json content-signing-key.pub";
 
@@ -96,200 +89,284 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-export default function CommitmentPanel({ data }: { data: CommitmentData }) {
+function DownloadLink({
+  name,
+  label,
+  content,
+  mime,
+}: {
+  name: string;
+  label: string;
+  content: string;
+  mime?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => downloadFile(name, content, mime)}
+      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+    >
+      <IconDownload className="size-3" /> {label}
+    </button>
+  );
+}
+
+export default function CommitmentPanel({
+  data,
+  certificateCheck,
+  body,
+}: {
+  data: CommitmentData;
+  certificateCheck?: { textMatches: boolean } | null | undefined;
+  body: string;
+}) {
   const t = useT();
-  const { commitment, signature, pubkey } = data;
+  const { commitment, signature, pubkey, certificate } = data;
   const isSigned = Boolean(signature);
-  const jsonText = JSON.stringify(commitment, null, 2);
+  const commitmentJson = JSON.stringify(commitment, null, 2);
+  const partial = certificate?.parcial === true;
+  const notVerified = certificate?.totales.no_verificadas ?? 0;
 
   return (
     <section className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-card p-4">
-        <div className="flex items-center gap-2">
-          <IconCertificate className="size-4 text-emerald-600" />
-          <span className="text-sm font-medium">{t("commitment.emitted")}</span>
-        </div>
-        <div className="flex items-center gap-1">
-          {isSigned ? (
-            <>
-              <IconShieldCheck className="size-4 text-emerald-600" />
-              <span className="text-xs text-muted-foreground">
-                {t("commitment.signedBadge", { key_id: signature!.key_id })}
-              </span>
-            </>
-          ) : (
-            <span className="text-xs text-muted-foreground">
-              {t("commitment.unsignedBadge")}
+      <div
+        className={
+          partial
+            ? "rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/40"
+            : "rounded-xl border border-border bg-card p-4"
+        }
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <IconCertificate className="size-4 text-emerald-600" />
+            <span className="text-sm font-medium">
+              {t("commitment.emitted")}
             </span>
-          )}
-        </div>
-      </div>
-
-      {/* Summary */}
-      <div className="rounded-xl border border-border bg-card p-4 space-y-2">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium">{t("commitment.summary")}</h3>
-          <button
-            type="button"
-            onClick={() => downloadFile("commitment.json", jsonText)}
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-          >
-            <IconDownload className="size-3" /> {t("commitment.downloadJson")}
-          </button>
-        </div>
-        <dl className="grid grid-cols-[auto_1fr] gap-1.5 text-xs">
-          <dt className="text-muted-foreground">
-            {t("commitment.labelPackHash")}
-          </dt>
-          <dd className="font-mono">{commitment.pack_hash}</dd>
-          <dt className="text-muted-foreground">{t("commitment.labelAsOf")}</dt>
-          <dd>{commitment.as_of}</dd>
-          <dt className="text-muted-foreground">
-            {t("commitment.labelConstanciaAt")}
-          </dt>
-          <dd>{commitment.fecha_constancia}</dd>
-          <dt className="text-muted-foreground">
-            {t("commitment.labelVerified")}
-          </dt>
-          <dd>
-            {commitment.citas_verificadas}/{commitment.total_citas}{" "}
-            <span className="text-muted-foreground">
-              {t("commitment.labelRefused", {
-                failures: commitment.citas_fallidas,
-              })}
-            </span>
-          </dd>
-          <dt className="text-muted-foreground">
-            {t("commitment.labelScope")}
-          </dt>
-          <dd className="text-muted-foreground">{commitment.alcance}</dd>
-        </dl>
-
-        <details className="mt-2 text-xs">
-          <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
-            {t("commitment.showJson")}
-          </summary>
-          <pre className="mt-2 overflow-x-auto rounded-md bg-muted/50 p-3 font-mono text-[10px] leading-tight">
-            {jsonText}
-          </pre>
-        </details>
-      </div>
-
-      {/* Signature envelope */}
-      {isSigned && (
-        <div className="rounded-xl border border-border bg-card p-4 space-y-2">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium">
-              {t("commitment.sigEnvelope")}
-            </h3>
-            <button
-              type="button"
-              onClick={() =>
-                downloadFile(
-                  "commitment.sig.json",
-                  JSON.stringify(signature!, null, 2),
-                )
-              }
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-            >
-              <IconDownload className="size-3" /> {t("commitment.downloadSig")}
-            </button>
           </div>
+          <div className="flex items-center gap-1">
+            {isSigned ? (
+              <>
+                <IconShieldCheck className="size-4 text-emerald-600" />
+                <span className="text-xs text-muted-foreground">
+                  {t("commitment.badgeSealed", {
+                    key_id: signature!.key_id,
+                  })}
+                </span>
+              </>
+            ) : (
+              <span className="text-xs text-muted-foreground">
+                {t("commitment.badgeUnsealed")}
+              </span>
+            )}
+          </div>
+        </div>
+        {partial ? (
+          <p className="mt-1 flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-300">
+            <IconAlertTriangle className="size-3.5 shrink-0" />
+            {t(
+              notVerified === 1
+                ? "commitment.partialHeaderOne"
+                : "commitment.partialHeaderMany",
+              { count: notVerified },
+            )}
+          </p>
+        ) : null}
+      </div>
+
+      {/* Certificate: every detected citation, the brief fingerprint, scope. */}
+      {certificate ? (
+        <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-medium">{t("commitment.title")}</h3>
+            <DownloadLink
+              name="certificado.json"
+              label={t("commitment.downloadCertificate")}
+              content={JSON.stringify(certificate, null, 2)}
+            />
+          </div>
+
           <dl className="grid grid-cols-[auto_1fr] gap-1.5 text-xs">
             <dt className="text-muted-foreground">
-              {t("commitment.labelKeyId")}
+              {t("commitment.labelPackHash")}
             </dt>
-            <dd className="font-mono">{signature!.key_id}</dd>
+            <dd className="font-mono break-all">{certificate.pack_hash}</dd>
             <dt className="text-muted-foreground">
-              {t("commitment.labelAlgorithm")}
+              {t("commitment.labelAsOf")}
             </dt>
-            <dd>{signature!.algorithm}</dd>
+            <dd>{certificate.as_of}</dd>
             <dt className="text-muted-foreground">
-              {t("commitment.labelRole")}
+              {t("commitment.labelAsOfOrigen")}
             </dt>
-            <dd>{signature!.role}</dd>
+            <dd>{certificate.as_of_origen}</dd>
+            <dt className="text-muted-foreground">
+              {t("commitment.labelEmittedAt")}
+            </dt>
+            <dd>{certificate.fecha_emision}</dd>
             <dt className="text-muted-foreground">
               {t("commitment.labelCommitmentHash")}
             </dt>
             <dd className="font-mono break-all">
-              {signature!.commitment_hash}
+              {certificate.commitment_hash}
             </dd>
           </dl>
 
-          {signature!.key_id !== PUBLISHED_DIKE_KEY_ID && (
-            <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/40">
-              <p className="flex items-center gap-2 text-xs font-medium">
-                <IconAlertTriangle className="size-4 shrink-0 text-amber-600" />
-                {t("commitment.differentKeyTitle")}
+          <div className="space-y-1">
+            <p className="text-xs font-medium">
+              {t("commitment.hashLabel")}
+            </p>
+            <p className="font-mono text-[11px] break-all">
+              {certificate.escrito.sha256}
+            </p>
+            {certificateCheck ? (
+              <p
+                className={
+                  certificateCheck.textMatches
+                    ? "flex items-center gap-1 text-xs text-muted-foreground"
+                    : "flex items-center gap-1 text-xs font-medium text-red-700 dark:text-red-300"
+                }
+              >
+                {certificateCheck.textMatches ? (
+                  <IconCheck className="size-3.5 shrink-0 text-emerald-600" />
+                ) : (
+                  <IconX className="size-3.5 shrink-0" />
+                )}
+                {certificateCheck.textMatches
+                  ? t("commitment.textMatchOk")
+                  : t("commitment.textMismatch")}
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t("commitment.differentKeyDesc", {
-                  key_id: signature!.key_id,
-                  published: PUBLISHED_DIKE_KEY_ID,
-                })}
-              </p>
-            </div>
-          )}
+            ) : null}
+            <DownloadLink
+              name="escrito-verificado.txt"
+              label={t("commitment.downloadText")}
+              content={normalizeBriefText(body)}
+              mime="text/plain"
+            />
+          </div>
 
-          {pubkey && (
-            <dl>
-              <div className="grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-1.5">
-                <dt className="text-xs text-muted-foreground">
-                  {t("commitment.labelPubkey")}
-                </dt>
-                <dd>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      downloadFile(
-                        "content-signing-key.pub",
-                        pubkey,
-                        "text/plain",
-                      )
-                    }
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    <IconDownload className="size-3" />{" "}
-                    {t("commitment.downloadPub")}
-                  </button>
-                </dd>
-                <dd className="col-span-2">
-                  <pre className="overflow-x-auto rounded-md bg-muted/50 p-3 font-mono text-[10px] leading-tight">
-                    {pubkey.trim()}
-                  </pre>
-                </dd>
-              </div>
-            </dl>
-          )}
+          <p className="text-xs font-medium">
+            {t("commitment.listHeading")}
+          </p>
+          <ul className="space-y-1.5">
+            {certificate.citas.map((cita: VerificationCertificate["citas"][number]) => (
+              <li
+                key={cita.posicion}
+                className="rounded-lg border border-border p-2 text-xs"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <span className="min-w-0 font-medium">
+                    {cita.posicion}. {cita.cita}
+                  </span>
+                  <StatusBadge status={cita.estado as CitationStatus} />
+                </div>
+                {cita.estado !== "verified" &&
+                (cita.resolucion || cita.vigencia) ? (
+                  <p className="mt-1 text-muted-foreground">
+                    <code>
+                      {[cita.resolucion, cita.vigencia]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </code>
+                  </p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+
+          <p className="text-xs text-muted-foreground">{certificate.alcance}</p>
+          <p className="text-xs text-muted-foreground">
+            {t("commitment.hashPrivacy")}
+          </p>
+        </div>
+      ) : (
+        /* Legacy rows emitted before certificates existed. */
+        <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+          <dl className="grid grid-cols-[auto_1fr] gap-1.5 text-xs">
+            <dt className="text-muted-foreground">
+              {t("commitment.labelPackHash")}
+            </dt>
+            <dd className="font-mono break-all">{commitment.pack_hash}</dd>
+            <dt className="text-muted-foreground">
+              {t("commitment.labelAsOf")}
+            </dt>
+            <dd>{commitment.as_of}</dd>
+            <dt className="text-muted-foreground">
+              {t("commitment.labelScope")}
+            </dt>
+            <dd className="text-muted-foreground">{commitment.alcance}</dd>
+          </dl>
         </div>
       )}
 
-      {/* Offline verification. Without a signature there is nothing a third
-          party can check, and the panel says so instead of offering a recipe. */}
-      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+      <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-medium">
+            {t("commitment.labelCommitmentHash")}
+          </h3>
+          <DownloadLink
+            name="commitment.json"
+            label={t("commitment.downloadJson")}
+            content={commitmentJson}
+          />
+        </div>
+        <details className="text-xs">
+          <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
+            {t("commitment.showJson")}
+          </summary>
+          <pre className="mt-2 overflow-x-auto rounded-md bg-muted/50 p-3 font-mono text-[10px] leading-tight">
+            {commitmentJson}
+          </pre>
+        </details>
+      </div>
+
+      {/* Integrity seal. */}
+      <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+        <h3 className="text-sm font-medium">{t("commitment.sealTitle")}</h3>
+        <p className="text-xs text-muted-foreground">
+          {t("commitment.sealExplanation")}
+        </p>
         {isSigned ? (
           <>
-            <h3 className="flex items-center gap-2 text-sm font-medium">
-              <IconCheck className="size-4 text-emerald-600" />
-              {t("commitment.offlineTitle")}
-            </h3>
+            <dl className="grid grid-cols-[auto_1fr] gap-1.5 text-xs">
+              <dt className="text-muted-foreground">
+                {t("commitment.labelKeyId")}
+              </dt>
+              <dd className="font-mono">{signature!.key_id}</dd>
+              <dt className="text-muted-foreground">
+                {t("commitment.labelAlgorithm")}
+              </dt>
+              <dd>{signature!.algorithm}</dd>
+              <dt className="text-muted-foreground">
+                {t("commitment.labelRole")}
+              </dt>
+              <dd>{signature!.role}</dd>
+            </dl>
             <p className="text-xs text-muted-foreground">
-              {t("commitment.offlineDesc")}
+              {signature!.key_id === PUBLISHED_DIKE_KEY_ID
+                ? t("commitment.declaredKey")
+                : t("commitment.demoKey", {
+                    key_id: signature!.key_id,
+                    published: PUBLISHED_DIKE_KEY_ID,
+                  })}
             </p>
-            <div className="space-y-2">
-              <p className="text-xs font-medium">
-                {t("commitment.offlineStep1")}
-              </p>
-              <a
-                href={DIKE_REPO_VERIFIER_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-muted-foreground underline"
-              >
-                verificar_tercero.py <IconExternalLink className="size-3" />
-              </a>
-            </div>
-            <div className="space-y-2">
+            {pubkey ? (
+              <div className="space-y-1">
+                <DownloadLink
+                  name="content-signing-key.pub"
+                  label={t("commitment.downloadPub")}
+                  content={pubkey}
+                  mime="text/plain"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t("commitment.pubKeyCaveat")}
+                </p>
+              </div>
+            ) : null}
+            <DownloadLink
+              name="commitment.sig.json"
+              label={t("commitment.downloadSig")}
+              content={JSON.stringify(signature, null, 2)}
+            />
+            <div className="space-y-1">
               <p className="text-xs font-medium">
                 {t("commitment.offlineStep2")}
               </p>
@@ -298,29 +375,15 @@ export default function CommitmentPanel({ data }: { data: CommitmentData }) {
               </pre>
               <CopyButton text={VERIFY_COMMAND} />
             </div>
-          </>
-        ) : (
-          <>
-            <h3 className="flex items-center gap-2 text-sm font-medium">
-              <IconAlertTriangle className="size-4 text-amber-600" />
-              {t("commitment.unsignedTitle")}
-            </h3>
             <p className="text-xs text-muted-foreground">
-              {t("commitment.unsignedDesc")}
+              {t("commitment.independentVerifier")}
             </p>
           </>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            {t("commitment.unsealed")}
+          </p>
         )}
-        <p className="text-xs text-muted-foreground">
-          <a
-            href={DIKE_REPO_KEYS_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 underline"
-          >
-            {t("commitment.offlineDocs")}{" "}
-            <IconExternalLink className="size-3" />
-          </a>
-        </p>
       </div>
     </section>
   );
