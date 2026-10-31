@@ -3,6 +3,7 @@ import { buildDeepLink } from "@agent-native/core/server";
 import { z } from "zod";
 
 import { getDb, schema } from "../server/db/index.js";
+import { isoNow } from "../server/db/timestamps.js";
 import { requireUser } from "../server/lib/briefs.js";
 import { DEMO_BRIEF_BODY, DEMO_BRIEF_TITLE } from "../server/lib/demo-brief.js";
 
@@ -25,6 +26,7 @@ export default defineAction({
   run: async (args, ctx) => {
     const ownerEmail = requireUser(ctx);
     const orgId = ctx?.orgId ?? null;
+    const now = isoNow();
     const brief = {
       id: crypto.randomUUID(),
       title: args.demo
@@ -34,6 +36,8 @@ export default defineAction({
       ownerEmail,
       orgId,
       visibility: orgId ? ("org" as const) : ("private" as const),
+      createdAt: now,
+      updatedAt: now,
     };
     await getDb().insert(schema.briefs).values(brief);
     return { id: brief.id, title: brief.title };

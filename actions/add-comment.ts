@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb, schema } from "../server/db/index.js";
+import { isoNow } from "../server/db/timestamps.js";
 import { lockBrief } from "../server/lib/brief-write.js";
 import { commentAuthor, requireUser } from "../server/lib/briefs.js";
 
@@ -23,9 +24,10 @@ export default defineAction({
     const ownerEmail = requireUser(ctx);
     const id = await getDb().transaction(async (tx) => {
       const brief = await lockBrief(tx, args.briefId, "commenter");
+      let citationRaw: string | null = null;
       if (args.citationId) {
         const [citation] = await tx
-          .select({ id: schema.citations.id })
+          .select({ id: schema.citations.id, raw: schema.citations.raw })
           .from(schema.citations)
           .where(
             and(
@@ -39,16 +41,19 @@ export default defineAction({
             errorCode: "not_found",
             statusCode: 404,
           });
+        citationRaw = citation.raw;
       }
       const item = {
         id: crypto.randomUUID(),
         briefId: args.briefId,
         citationId: args.citationId ?? null,
+        citationRaw,
         kind: "comment" as const,
         author: commentAuthor(ctx),
         body: args.body,
         ownerEmail,
         orgId: brief.orgId,
+        createdAt: isoNow(),
       };
       await tx.insert(schema.reviewItems).values(item);
       return item.id;

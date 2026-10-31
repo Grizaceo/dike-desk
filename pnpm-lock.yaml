@@ -63,7 +63,7 @@ importers:
         specifier: 0.222.2
         version: 0.222.2(5b2da080817861cca93a0cbe2f2ac177)
       '@agent-native/otel':
-        specifier: latest
+        specifier: 0.1.29
         version: 0.1.29(@agent-native/core@0.222.2(5b2da080817861cca93a0cbe2f2ac177))
       '@agent-native/toolkit':
         specifier: ^0.222.2

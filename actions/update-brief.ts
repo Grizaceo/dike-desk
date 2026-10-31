@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb, schema } from "../server/db/index.js";
+import { isoNow } from "../server/db/timestamps.js";
 import {
   assertBriefRevision,
   lockBrief,
@@ -33,7 +34,7 @@ export default defineAction({
       const brief = await lockBrief(tx, briefId, "editor");
       assertBriefRevision(brief.updatedAt, expectedUpdatedAt);
       const changed = body !== undefined && body !== brief.body;
-      const now = new Date().toISOString();
+      const now = isoNow();
       await tx
         .update(schema.briefs)
         .set({

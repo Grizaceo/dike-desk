@@ -23,6 +23,7 @@ function item(id: string, citationId: string | null, extra = {}): ReviewItem {
   return {
     id,
     citationId,
+    citationRaw: null,
     kind: "comment",
     author: "user",
     body: id,
