@@ -1,5 +1,15 @@
 import { execFile } from "node:child_process";
-import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createPublicKey } from "node:crypto";
+import { constants } from "node:fs";
+import {
+  chmod,
+  lstat,
+  mkdir,
+  mkdtemp,
+  open,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -54,6 +64,9 @@ export type DikeRun = {
 
 const TIMEOUT_MS = 120_000;
 const MAX_BODY_BYTES = 400_000;
+const MAX_JSON_BYTES = 8 * 1024 * 1024;
+const MAX_PUBKEY_BYTES = 16 * 1024;
+const IMAGE_HOME = "/home/dike";
 
 function run(cmd: string, args: string[]) {
   return new Promise<{ code: number; stdout: string; stderr: string }>(
@@ -76,6 +89,53 @@ function run(cmd: string, args: string[]) {
   );
 }
 
+function badOutput(): never {
+  return fail("Diké engine returned unsafe or malformed output.", {
+    errorCode: "dike_bad_output",
+    statusCode: 502,
+  });
+}
+
+let dockerUserCache: Promise<string> | null = null;
+
+/**
+ * Identity the container runs as so it can read the 0700 work dir and write
+ * the 0700 output dir we own. Rootless Docker maps container root to our host
+ * uid; rootful Docker needs our own uid:gid. Fails closed when undetermined.
+ */
+function dockerUser(): Promise<string> {
+  dockerUserCache ??= (async () => {
+    const { code, stdout } = await run("docker", [
+      "info",
+      "--format",
+      "{{json .SecurityOptions}}",
+    ]);
+    let options: unknown;
+    try {
+      options = JSON.parse(stdout);
+    } catch {
+      options = null;
+    }
+    if (
+      code !== 0 ||
+      !Array.isArray(options) ||
+      !options.every((o) => typeof o === "string")
+    ) {
+      dockerUserCache = null;
+      fail("Could not determine the Docker security mode.", {
+        errorCode: "dike_docker_unavailable",
+        statusCode: 503,
+      });
+    }
+    if ((options as string[]).some((o) => /(^|,)name=rootless(,|$)/.test(o)))
+      return "0:0";
+    if (typeof process.getuid === "function" && process.getgid)
+      return `${process.getuid()}:${process.getgid()}`;
+    return "0:0";
+  })();
+  return dockerUserCache;
+}
+
 /** Run `dike constancia` on a brief body; optionally emit the commitment. */
 export async function runConstancia(
   body: string,
@@ -95,22 +155,18 @@ export async function runConstancia(
     );
   }
 
-  const work = await mkdtemp(path.join(tmpdir(), "dike-desk-"));
   const docker = Boolean(image);
+  const user = docker ? await dockerUser() : null;
+  const work = await mkdtemp(path.join(tmpdir(), "dike-desk-"));
   try {
-    await writeFile(path.join(work, "brief.md"), body, "utf8");
-    if (docker) {
-      // The image runs as a non-root user that is a stranger to the host
-      // (rootless Docker maps it to a subordinate uid), so it must be able to
-      // read the brief. The output dir is created here, owned by us and
-      // world-writable: the engine accepts an existing empty dir, and we can
-      // then delete the files it writes even though we do not own them.
-      await chmod(work, 0o755);
-      await chmod(path.join(work, "brief.md"), 0o644);
-      if (opts.emitCommitment) {
-        await mkdir(path.join(work, "out"));
-        await chmod(path.join(work, "out"), 0o777);
-      }
+    await chmod(work, 0o700);
+    await writeFile(path.join(work, "brief.md"), body, {
+      encoding: "utf8",
+      mode: 0o600,
+      flag: "wx",
+    });
+    if (opts.emitCommitment) {
+      await mkdir(path.join(work, "out"), { mode: 0o700 });
     }
     const root = docker ? "/work" : work;
     const args = ["constancia", `${root}/brief.md`, "--json"];
@@ -124,12 +180,17 @@ export async function runConstancia(
       }
     }
 
-    const { code, stdout, stderr } = docker
+    const { code, stdout } = docker
       ? await run("docker", [
           "run",
           "--rm",
+          "--pull=never",
           "--network",
           "none",
+          "--user",
+          user!,
+          "--env",
+          `HOME=${IMAGE_HOME}`,
           // --mount takes the host path verbatim, so a Windows path such as
           // C:\Users\...\Temp\dike-desk-x needs no conversion (unlike -v,
           // which splits on the drive-letter colon).
@@ -142,57 +203,127 @@ export async function runConstancia(
       : await run(bin!, args);
 
     // 0 = all verified, 1 = some were not. Anything else is an engine failure.
+    // The engine's stderr can echo brief text or paths: it is never surfaced.
     if (code !== 0 && code !== 1) {
-      fail(`Diké engine failed (exit ${code}). ${stderr.slice(-400)}`, {
+      fail(`Diké engine failed (exit ${code}).`, {
         errorCode: "dike_failed",
         statusCode: 502,
       });
     }
-    let result: DikeResult;
+    let parsed: unknown;
     try {
-      result = JSON.parse(stdout) as DikeResult;
+      parsed = JSON.parse(stdout);
     } catch {
-      fail("Diké engine returned output that is not JSON.", {
-        errorCode: "dike_bad_output",
-        statusCode: 502,
-      });
+      return badOutput();
     }
+    if (
+      !isRecord(parsed) ||
+      !Array.isArray(parsed.detalles) ||
+      !isRecord(parsed.meta)
+    )
+      return badOutput();
+    const result = parsed as unknown as DikeResult;
 
     let commitment: unknown = null;
     let signature: unknown = null;
     let pubkey: string | null = null;
     if (opts.emitCommitment) {
-      commitment = await readJson(path.join(work, "out", "commitment.json"));
-      signature = await readJson(path.join(work, "out", "commitment.sig.json"));
+      const out = path.join(work, "out");
+      await assertPlainDirectory(out);
+      commitment = await readJson(path.join(out, "commitment.json"));
+      signature = await readJson(path.join(out, "commitment.sig.json"));
       // The public key is only written when --sign was passed. Reading it here
       // lets the UI offer the full offline-verification kit without the lawyer
       // having to go back to the engine.
-      pubkey = await readText(path.join(work, "out", "content-signing-key.pub"));
+      pubkey = await readPublicKey(path.join(out, "content-signing-key.pub"));
     }
     return { result, commitment, signature, pubkey };
   } finally {
     // A failed cleanup must not turn a finished verification into an error,
-    // but it leaves a copy of the brief on disk, so say where.
-    await rm(work, { recursive: true, force: true }).catch((error) =>
-      console.error(`[dike] could not remove ${work}:`, error),
+    // but it leaves a copy of the brief on disk.
+    await rm(work, { recursive: true, force: true }).catch(() =>
+      console.error("[dike] could not remove a temporary work directory"),
     );
   }
 }
 
-async function readJson(file: string): Promise<unknown | null> {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isMissing(error: unknown) {
+  return (error as { code?: unknown })?.code === "ENOENT";
+}
+
+async function assertPlainDirectory(dir: string) {
+  let info;
   try {
-    return JSON.parse(await readFile(file, "utf8"));
+    info = await lstat(dir);
   } catch {
-    return null;
+    return badOutput();
+  }
+  if (!info.isDirectory()) badOutput();
+}
+
+/** Read a regular, non-symlink file of bounded size, or null if absent. */
+async function readBounded(file: string, maxBytes: number) {
+  let before;
+  try {
+    before = await lstat(file);
+  } catch (error) {
+    if (isMissing(error)) return null;
+    return badOutput();
+  }
+  if (!before.isFile() || before.size > maxBytes) badOutput();
+  let handle;
+  try {
+    handle = await open(file, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
+  } catch (error) {
+    if (isMissing(error)) return null;
+    return badOutput();
+  }
+  try {
+    const during = await handle.stat();
+    if (
+      !during.isFile() ||
+      during.size > maxBytes ||
+      during.ino !== before.ino ||
+      during.dev !== before.dev
+    )
+      badOutput();
+    return await handle.readFile({ encoding: "utf8" });
+  } catch {
+    return badOutput();
+  } finally {
+    await handle.close().catch(() => undefined);
   }
 }
 
-/** Read a text file as-is, or null if it doesn't exist (e.g. pubkey when unsigned). */
-async function readText(file: string): Promise<string | null> {
+async function readJson(file: string): Promise<unknown | null> {
+  const text = await readBounded(file, MAX_JSON_BYTES);
+  if (text === null) return null;
+  let parsed: unknown;
   try {
-    return await readFile(file, "utf8");
+    parsed = JSON.parse(text);
   } catch {
-    return null;
+    return badOutput();
+  }
+  if (!isRecord(parsed)) return badOutput();
+  return parsed;
+}
+
+/** Normalized SPKI PEM of an Ed25519 public key, or null if absent. */
+async function readPublicKey(file: string): Promise<string | null> {
+  const text = await readBounded(file, MAX_PUBKEY_BYTES);
+  if (text === null) return null;
+  if (!text.includes("-----BEGIN PUBLIC KEY-----") || /PRIVATE/.test(text))
+    return badOutput();
+  try {
+    const key = createPublicKey(text);
+    if (key.asymmetricKeyType !== "ed25519") return badOutput();
+    return key.export({ type: "spki", format: "pem" }).toString();
+  } catch {
+    return badOutput();
   }
 }
 
