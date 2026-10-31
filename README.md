@@ -87,8 +87,11 @@ or through the environment. Any OpenAI-compatible endpoint works, e.g. NVIDIA NI
 AGENT_ENGINE=ai-sdk:openai AGENT_MODEL=minimaxai/minimax-m3.1-flash pnpm dev`.
 
 Then comment on a citation (e.g. «esto es el Código del Trabajo» on
-«artículo 60»): the agent answers on the page and proposes a fix; accept it
-and the agent verifies again.
+«artículo 60»): the agent answers on the page, shows what art. 60 of the
+Código del Trabajo is about from a consulted source (the payment of wages
+owed when a worker dies), warns that it does not support the sentence and
+proposes withdrawing the citation; accept it and the agent verifies again.
+The full script is in [`DEMO.md`](DEMO.md).
 
 ## Verification on Netlify
 
