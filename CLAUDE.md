@@ -42,6 +42,7 @@ Citation review for Chilean legal briefs. `/briefs` lists briefs; `/briefs/:brie
 - Diké does not certify that a provision supports the argument. Report `pack_hash` and `as_of` with results.
 - Engine: `server/lib/dike.ts` runs `dike constancia --json` via `DIKE_DOCKER_IMAGE` or `DIKE_BIN`.
 - Legal team: `server/plugins/legal-team-resources.ts` seeds `resources/es/` (instructions, sub-agents, skills, context) as shared agent resources once, insert-if-absent; `resources/en/` is the English mirror and must keep the same files. Edit the content there, not in the plugin. Seeding only inserts missing paths: content changes do not reach installs that were already seeded.
+- Legal personality: each lawyer picks iusnaturalista / positivista / eclectico (default) in Settings → Application → General; it is stored as the personal resource `instructions/perfil-juridico.md` and defined in `resources/{es,en}/instructions/filosofia-juridica.md`. Seed steps are versioned (`legal-team:v1`, `legal-team:v2`): add new seeded files as a new step, never by re-running an old one.
 
 | Action          | Purpose                                             |
 | --------------- | --------------------------------------------------- |

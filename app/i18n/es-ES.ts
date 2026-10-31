@@ -186,6 +186,26 @@ const messages = {
     noCitations: "Sin citas",
     noCorpus: "Sin corpus",
   },
+  legalPersonality: {
+    title: "Personalidad jurídica",
+    description:
+      "Orienta qué prioriza LexO al argumentar. No cambia cómo se verifican las citas.",
+    eclectico: "Ecléctica (por defecto)",
+    eclecticoDescription:
+      "Positivismo metodológico: primero la norma vigente bien identificada; luego principios explícitos y ponderados.",
+    positivista: "Positivista jurídica",
+    positivistaDescription:
+      "Fuente formal, jerarquía, tenor literal y seguridad jurídica por delante.",
+    iusnaturalista: "Iusnaturalista",
+    iusnaturalistaDescription:
+      "Dignidad y derechos esenciales como criterio para interpretar y poner límites.",
+    source:
+      "Basado en Carlos Santiago Nino, Introducción al análisis del derecho, cap. I.",
+    saving: "Guardando…",
+    saved: "Guardado",
+    saveFailed: "No se pudo guardar",
+    loadFailed: "No se pudo cargar la personalidad jurídica",
+  },
   root: {
     commandActions: "Acciones",
     commandAppearance: "Apariencia",

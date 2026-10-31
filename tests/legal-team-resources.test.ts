@@ -9,13 +9,18 @@ import {
 } from "@agent-native/core/resources/metadata";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { legalTeamSeed } from "../server/lib/legal-team-seed.generated.js";
+import {
+  legalTeamAgentsSection,
+  legalTeamSeed,
+} from "../server/lib/legal-team-seed.generated.js";
 import { createTestDb, type TestDb } from "./helpers/test-db.js";
 
 const holder = vi.hoisted(() => ({
   db: null as TestDb | null,
   ready: vi.fn(),
   putIfAbsent: vi.fn(),
+  putIfCurrent: vi.fn(),
+  getByPath: vi.fn(),
   put: vi.fn(),
   remove: vi.fn(),
   migrations: vi.fn(),
@@ -31,7 +36,9 @@ vi.mock("../server/plugins/db.js", () => ({
 vi.mock("@agent-native/core/resources/store", () => ({
   SHARED_OWNER: "__shared__",
   ensureResourceStoreReady: holder.ready,
+  resourceGetByPath: holder.getByPath,
   resourcePutIfAbsent: holder.putIfAbsent,
+  resourcePutIfCurrent: holder.putIfCurrent,
   resourcePut: holder.put,
   resourceDelete: holder.remove,
 }));
@@ -99,13 +106,17 @@ describe("legal team resource content", () => {
     },
   );
 
-  it("matches the generated module to every Spanish resource except learnings", () => {
+  it("matches the generated module to every Spanish resource except learnings and agents", () => {
     const expected = Object.fromEntries(
       es
-        .filter((file) => file !== "LEARNINGS.md")
+        .filter((file) => file !== "LEARNINGS.md" && file !== "AGENTS.md")
         .map((file) => [file, content("es", file)]),
     );
     expect(legalTeamSeed).toEqual(expected);
+  });
+
+  it("embeds the shared AGENTS.md section verbatim", () => {
+    expect(legalTeamAgentsSection).toBe(content("es", "AGENTS.md"));
   });
 
   it("uses Spanish learnings verbatim as the shared default", () => {
@@ -130,6 +141,23 @@ describe("legal team resource content", () => {
 describe("legal team resource seeding", () => {
   let db: TestDb;
 
+  const sharedAgents = {
+    id: "shared-agents-id",
+    path: "AGENTS.md",
+    owner: "__shared__",
+    content: "# Shared instructions\n",
+    mimeType: "text/markdown",
+    size: 21,
+    createdAt: 1,
+    updatedAt: 2,
+    createdBy: "user" as const,
+    visibility: "workspace" as const,
+    threadId: null,
+    runId: null,
+    expiresAt: null,
+    metadata: null,
+  };
+
   beforeEach(async () => {
     vi.clearAllMocks();
     db = await createTestDb();
@@ -137,11 +165,19 @@ describe("legal team resource seeding", () => {
     holder.ready.mockResolvedValue(undefined);
     holder.migrations.mockResolvedValue(undefined);
     holder.putIfAbsent.mockResolvedValue(null);
+    holder.getByPath.mockResolvedValue(sharedAgents);
+    holder.putIfCurrent.mockImplementation(async (input) => ({
+      ...sharedAgents,
+      content: input.content,
+    }));
   });
 
-  it("writes each resource once, then writes the marker", async () => {
+  it("writes each resource once, appends the section, then writes both markers", async () => {
     holder.putIfAbsent.mockImplementation(async () => {
-      expect(await db.select().from(schema.dikeDeskSeedMarkers)).toEqual([]);
+      const keys = (await db.select().from(schema.dikeDeskSeedMarkers)).map(
+        (row) => row.key,
+      );
+      expect(keys).not.toContain("legal-team:v2");
     });
     await seedLegalTeamResources();
     expect(holder.migrations).toHaveBeenCalledOnce();
@@ -156,20 +192,108 @@ describe("legal team resource seeding", () => {
         text,
         "text/markdown",
       );
+    expect(holder.getByPath).toHaveBeenCalledWith("__shared__", "AGENTS.md");
+    expect(holder.putIfCurrent).toHaveBeenCalledOnce();
+    expect(holder.putIfCurrent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        owner: "__shared__",
+        path: "AGENTS.md",
+        content: `${sharedAgents.content.trimEnd()}\n\n${legalTeamAgentsSection}`,
+        expectedId: sharedAgents.id,
+        expectedUpdatedAt: sharedAgents.updatedAt,
+        expectedContent: sharedAgents.content,
+      }),
+    );
     expect(holder.put).not.toHaveBeenCalled();
     expect(holder.remove).not.toHaveBeenCalled();
     expect(await db.select().from(schema.dikeDeskSeedMarkers)).toMatchObject([
       { key: "legal-team:v1" },
+      { key: "legal-team:v2" },
     ]);
   });
 
-  it("does nothing when the marker already exists", async () => {
+  it("seeds only the v2 paths when the v1 marker already exists", async () => {
     await db
       .insert(schema.dikeDeskSeedMarkers)
       .values({ key: "legal-team:v1" });
     await seedLegalTeamResources();
+    expect(holder.ready).toHaveBeenCalledOnce();
+    expect(holder.putIfAbsent).toHaveBeenCalledOnce();
+    expect(holder.putIfAbsent).toHaveBeenCalledWith(
+      "__shared__",
+      "instructions/filosofia-juridica.md",
+      legalTeamSeed["instructions/filosofia-juridica.md"],
+      "text/markdown",
+    );
+    for (const file of Object.keys(legalTeamSeed))
+      if (file !== "instructions/filosofia-juridica.md")
+        expect(holder.putIfAbsent).not.toHaveBeenCalledWith(
+          "__shared__",
+          file,
+          expect.anything(),
+          expect.anything(),
+        );
+    expect(holder.putIfCurrent).toHaveBeenCalledOnce();
+    expect(await db.select().from(schema.dikeDeskSeedMarkers)).toMatchObject([
+      { key: "legal-team:v1" },
+      { key: "legal-team:v2" },
+    ]);
+  });
+
+  it("does nothing when both markers already exist", async () => {
+    await db
+      .insert(schema.dikeDeskSeedMarkers)
+      .values([{ key: "legal-team:v1" }, { key: "legal-team:v2" }]);
+    await seedLegalTeamResources();
     expect(holder.ready).not.toHaveBeenCalled();
     expect(holder.putIfAbsent).not.toHaveBeenCalled();
+    expect(holder.getByPath).not.toHaveBeenCalled();
+    expect(holder.putIfCurrent).not.toHaveBeenCalled();
+  });
+
+  it("still writes the v2 marker when shared AGENTS.md is absent", async () => {
+    await db
+      .insert(schema.dikeDeskSeedMarkers)
+      .values({ key: "legal-team:v1" });
+    holder.getByPath.mockResolvedValue(null);
+    await seedLegalTeamResources();
+    expect(holder.putIfCurrent).not.toHaveBeenCalled();
+    expect(await db.select().from(schema.dikeDeskSeedMarkers)).toMatchObject([
+      { key: "legal-team:v1" },
+      { key: "legal-team:v2" },
+    ]);
+  });
+
+  it("skips the append when AGENTS.md already has the section", async () => {
+    await db
+      .insert(schema.dikeDeskSeedMarkers)
+      .values({ key: "legal-team:v1" });
+    holder.getByPath.mockResolvedValue({
+      ...sharedAgents,
+      content: `# Shared\n\n<!-- lexo:agents-section v1 -->\n## LexO\n`,
+    });
+    await seedLegalTeamResources();
+    expect(holder.putIfCurrent).not.toHaveBeenCalled();
+    expect(await db.select().from(schema.dikeDeskSeedMarkers)).toMatchObject([
+      { key: "legal-team:v1" },
+      { key: "legal-team:v2" },
+    ]);
+  });
+
+  it("logs a fixed message and skips the v2 marker when the append fails", async () => {
+    await db
+      .insert(schema.dikeDeskSeedMarkers)
+      .values({ key: "legal-team:v1" });
+    holder.putIfCurrent.mockResolvedValue(null);
+    const error = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    await expect(plugin()).resolves.toBeUndefined();
+    expect(error).toHaveBeenCalledWith("[legal-team] Resource seeding failed.");
+    expect(await db.select().from(schema.dikeDeskSeedMarkers)).toMatchObject([
+      { key: "legal-team:v1" },
+    ]);
+    error.mockRestore();
   });
 
   it("logs a fixed message and leaves the marker absent on store failure", async () => {

@@ -6,6 +6,7 @@ import {
   useAgentSettingsTabs,
 } from "@agent-native/toolkit/app/settings";
 
+import { LegalPersonalitySettings } from "@/components/settings/LegalPersonalitySettings";
 import { APP_TITLE } from "@/lib/app-config";
 
 import changelog from "../../CHANGELOG.md?raw";
@@ -24,6 +25,7 @@ export default function SettingsRoute() {
     <SettingsTabsPage
       account={<AccountSettingsCard />}
       extraTabs={agentSettingsTabs}
+      generalGroups={<LegalPersonalitySettings />}
       whatsNewMarkdown={changelog}
     />
   );

@@ -16,14 +16,19 @@ async function collect(dir, prefix = "") {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory())
       Object.assign(result, await collect(full, relative));
-    else if (entry.isFile() && relative !== "LEARNINGS.md")
+    else if (
+      entry.isFile() &&
+      relative !== "LEARNINGS.md" &&
+      relative !== "AGENTS.md"
+    )
       result[relative] = await readFile(full, "utf8");
   }
   return result;
 }
 
 const seed = await collect(root);
+const agentsSection = await readFile(path.join(root, "AGENTS.md"), "utf8");
 await writeFile(
   output,
-  `export const legalTeamSeed: Record<string, string> = ${JSON.stringify(seed, null, 2)};\n`,
+  `export const legalTeamSeed: Record<string, string> = ${JSON.stringify(seed, null, 2)};\n\nexport const legalTeamAgentsSection: string = ${JSON.stringify(agentsSection)};\n`,
 );
