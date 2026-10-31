@@ -127,30 +127,173 @@ describe("getCitationItems", () => {
 });
 
 describe("bodySegments", () => {
-  const citation = (id: string, start: number, end: number, raw: string) =>
-    ({ id, start, end, raw }) as Citation;
+  const citation = (
+    id: string,
+    start: number,
+    end: number,
+    raw: string,
+    status: Citation["status"] = "verified",
+  ) => ({ id, start, end, raw, status }) as Citation;
 
   it("highlights an aligned span", () => {
-    const c = citation("c", 2, 5, "abc");
-    expect(bodySegments("xxabc yy", [c])).toEqual([
-      { text: "xx" },
-      { text: "abc", citation: c },
-      { text: " yy" },
-    ]);
+    const c = citation("c", 3, 6, "abc");
+    expect(bodySegments("xx abc yy", [c])).toEqual({
+      segments: [
+        { text: "xx " },
+        { text: "abc", citation: c },
+        { text: " yy" },
+      ],
+      unlocated: [],
+    });
   });
 
-  it("leaves a misaligned stale span as plain text", () => {
-    const stale = { ...citation("c", 2, 5, "old"), status: "stale" as const };
-    expect(bodySegments("xxabc yy", [stale])).toEqual([{ text: "xxabc yy" }]);
+  it("leaves a missing stale span as plain text", () => {
+    const stale = citation("c", 2, 5, "old", "stale");
+    expect(bodySegments("xx abc yy", [stale])).toEqual({
+      segments: [{ text: "xx abc yy" }],
+      unlocated: [stale],
+    });
   });
 
   it("skips overlapping spans", () => {
-    const first = citation("first", 0, 3, "abc");
-    const overlap = citation("overlap", 1, 4, "bcd");
-    expect(bodySegments("abcd", [first, overlap])).toEqual([
-      { text: "abc", citation: first },
-      { text: "d" },
+    const body = "el artículo 16";
+    const first = citation("first", 0, body.length, body);
+    const shortStart = body.indexOf("artículo");
+    const overlap = citation("overlap", shortStart, body.length, "artículo 16");
+    expect(bodySegments(body, [first, overlap])).toEqual({
+      segments: [{ text: body, citation: first }],
+      unlocated: [overlap],
+    });
+  });
+
+  it("does not treat artículo 16 as a prefix of artículo 161", () => {
+    const raw = "artículo 16";
+    const body = "artículo 161";
+    const stale = citation("c", 0, raw.length, raw, "stale");
+    expect(bodySegments(body, [stale])).toEqual({
+      segments: [{ text: body }],
+      unlocated: [stale],
+    });
+  });
+
+  it("keeps a later citation marked after a longer replacement", () => {
+    const before = "Véase el artículo 16 y el artículo 19.";
+    const firstRaw = "artículo 16";
+    const secondRaw = "artículo 19";
+    const firstStart = before.indexOf(firstRaw);
+    const secondStart = before.indexOf(secondRaw);
+    const replacement = "artículo 161";
+    const body =
+      before.slice(0, firstStart) +
+      replacement +
+      before.slice(firstStart + firstRaw.length);
+    const replaced = citation(
+      "c1",
+      firstStart,
+      firstStart + firstRaw.length,
+      firstRaw,
+      "stale",
+    );
+    const later = citation(
+      "c2",
+      secondStart,
+      secondStart + secondRaw.length,
+      secondRaw,
+      "stale",
+    );
+    const foundAt = body.indexOf(secondRaw);
+    expect(bodySegments(body, [replaced, later])).toEqual({
+      segments: [
+        { text: body.slice(0, foundAt) },
+        { text: secondRaw, citation: later },
+        { text: body.slice(foundAt + secondRaw.length) },
+      ],
+      unlocated: [replaced],
+    });
+  });
+
+  it("keeps a later citation marked after a shorter replacement", () => {
+    const before = "Véase el artículo 16 y el artículo 19.";
+    const firstRaw = "artículo 16";
+    const secondRaw = "artículo 19";
+    const firstStart = before.indexOf(firstRaw);
+    const secondStart = before.indexOf(secondRaw);
+    const body =
+      before.slice(0, firstStart) +
+      "art. 16" +
+      before.slice(firstStart + firstRaw.length);
+    const replaced = citation(
+      "c1",
+      firstStart,
+      firstStart + firstRaw.length,
+      firstRaw,
+      "stale",
+    );
+    const later = citation(
+      "c2",
+      secondStart,
+      secondStart + secondRaw.length,
+      secondRaw,
+      "stale",
+    );
+    const foundAt = body.indexOf(secondRaw);
+    expect(bodySegments(body, [later, replaced]).segments).toContainEqual({
+      text: secondRaw,
+      citation: later,
+    });
+    expect(bodySegments(body, [later, replaced]).unlocated).toEqual([replaced]);
+    expect(foundAt).toBeGreaterThan(-1);
+  });
+
+  it("does not reuse a span already assigned to a nearer citation", () => {
+    const raw = "artículo 16";
+    const original = `${raw} y ${raw}`;
+    const body = `artículo 161 y ${raw}`;
+    const first = citation("c1", 0, raw.length, raw, "stale");
+    const secondStart = original.lastIndexOf(raw);
+    const second = citation(
+      "c2",
+      secondStart,
+      secondStart + raw.length,
+      raw,
+      "stale",
+    );
+    const result = bodySegments(body, [first, second]);
+    expect(result.segments.filter((segment) => segment.citation)).toEqual([
+      { text: raw, citation: second },
     ]);
+    expect(result.unlocated).toEqual([first]);
+  });
+
+  it("chooses the occurrence nearest the stored offset", () => {
+    const raw = "artículo 19";
+    const body = `${raw} y más adelante ${raw}`;
+    const second = body.lastIndexOf(raw);
+    const stale = citation(
+      "c",
+      second - 4,
+      second - 4 + raw.length,
+      raw,
+      "stale",
+    );
+    const result = bodySegments(body, [stale]);
+    const marked = result.segments.findIndex((segment) => segment.citation);
+    const before = result.segments
+      .slice(0, marked)
+      .map((segment) => segment.text)
+      .join("");
+    expect(before).toHaveLength(second);
+    expect(result.unlocated).toEqual([]);
+  });
+
+  it("matches a citation bounded by punctuation", () => {
+    const raw = "artículo 16";
+    const body = `(${raw}).`;
+    const mark = citation("c", 1, 1 + raw.length, raw);
+    expect(bodySegments(body, [mark])).toEqual({
+      segments: [{ text: "(" }, { text: raw, citation: mark }, { text: ")." }],
+      unlocated: [],
+    });
   });
 });
 

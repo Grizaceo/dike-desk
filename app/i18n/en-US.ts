@@ -123,6 +123,10 @@ const messages = {
     acceptButton: "Accept",
     rejectButton: "Reject",
     showInText: "Show in text",
+    unlocatedOne:
+      "1 citation could not be located in the text. Verify again to refresh its position.",
+    unlocatedMany:
+      "{{count}} citations could not be located in the text. Verify again to refresh their positions.",
     acceptedAgentMessage:
       'I accepted the suggestion for "{{citation}}". Verify the brief again and report what Diké says.',
     copy: "Copy",

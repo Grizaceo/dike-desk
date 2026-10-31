@@ -120,7 +120,7 @@ export default function BriefRoute() {
 
   const citations = data?.citations ?? [];
   const review = data?.review ?? [];
-  const parts = useMemo(
+  const { segments, unlocated } = useMemo(
     () => bodySegments(data?.brief.body ?? "", citations),
     [data?.brief.body, citations],
   );
@@ -208,6 +208,20 @@ export default function BriefRoute() {
           </div>
         </div>
 
+        {unlocated.length > 0 ? (
+          <p
+            role="status"
+            className="rounded-lg border border-border bg-muted px-3 py-2 text-sm"
+          >
+            {t(
+              unlocated.length === 1
+                ? "brief.unlocatedOne"
+                : "brief.unlocatedMany",
+              { count: unlocated.length },
+            )}
+          </p>
+        ) : null}
+
         {editing ? (
           <textarea
             value={draft}
@@ -216,7 +230,7 @@ export default function BriefRoute() {
           />
         ) : (
           <article className="whitespace-pre-wrap rounded-xl border border-border bg-card p-5 font-serif text-[15px] leading-7">
-            {parts.map((part, index) =>
+            {segments.map((part, index) =>
               part.citation ? (
                 <button
                   key={part.citation.id}
@@ -290,7 +304,7 @@ export default function BriefRoute() {
             onSelect={() => setSelectedId(citation.id)}
             onShowInText={
               !editing &&
-              parts.some((part) => part.citation?.id === citation.id)
+              segments.some((part) => part.citation?.id === citation.id)
                 ? () => focusCitationMark(citation.id)
                 : undefined
             }

@@ -124,6 +124,10 @@ const messages = {
     acceptButton: "Aceptar",
     rejectButton: "Rechazar",
     showInText: "Ver en el texto",
+    unlocatedOne:
+      "1 cita no se pudo ubicar en el texto. Verifica de nuevo para actualizar su posición.",
+    unlocatedMany:
+      "{{count}} citas no se pudieron ubicar en el texto. Verifica de nuevo para actualizar sus posiciones.",
     acceptedAgentMessage:
       "Acepté la sugerencia para «{{citation}}». Verifica de nuevo el escrito e informa lo que diga Diké.",
     copy: "Copiar",
