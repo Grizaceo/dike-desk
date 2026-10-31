@@ -10,7 +10,7 @@ Comprueba:
   * si se entrega commitment.json, que su hash canónico coincide con
     certificado["commitment_hash"].
 
-NO comprueba el sello de integridad del commitment (eso es
+NO comprueba el sello de integridad de commitment.json (eso es
 verificar_tercero.py, que viene con el repositorio del motor Diké) ni el
 argumento jurídico del escrito.
 
@@ -145,7 +145,7 @@ def main(argv: list[str]) -> int:
     print(
         "certificado.json no está sellado: esta comprobación no prueba que el "
         "certificado sea auténtico ni quién lo emitió.\n"
-        "No comprobado: el sello de integridad del commitment (eso lo hace "
+        "No comprobado: el sello de integridad de commitment.json (eso lo hace "
         "verificar_tercero.py, del repositorio del motor Diké) ni el "
         "argumento jurídico del escrito."
     )
