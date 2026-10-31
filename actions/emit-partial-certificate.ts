@@ -12,7 +12,12 @@ export default defineAction({
   uiOnly: true,
   schema: z.object({
     briefId: z.string().describe("Brief id"),
+    expectedUpdatedAt: z
+      .string()
+      .describe(
+        "The brief.updatedAt the UI showed when the lawyer confirmed; a stale revision gets 409 brief_changed.",
+      ),
   }),
-  run: async ({ briefId }, ctx) =>
-    emitCertificate(briefId, { partialConfirmed: true }, ctx),
+  run: async ({ briefId, expectedUpdatedAt }, ctx) =>
+    emitCertificate(briefId, { partialConfirmed: true, expectedUpdatedAt }, ctx),
 });

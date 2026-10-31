@@ -126,17 +126,27 @@ export default function BriefRoute() {
   });
   // The panel reads the commitment from get-brief, which every successful
   // mutation refetches; the server clears it whenever the text changes.
-  const commit = useActionMutation("emit-partial-certificate", {
-    onSuccess: (result) => {
-      setScrollToCommitment(true);
-      toast.success(
-        result.signed
-          ? t("brief.committedSigned")
-          : t("brief.committedUnsigned"),
-      );
-    },
+  const onEmitted = (result: { signed: boolean }) => {
+    setScrollToCommitment(true);
+    toast.success(
+      result.signed
+        ? t("brief.committedSigned")
+        : t("brief.committedUnsigned"),
+    );
+  };
+  const commit = useActionMutation("emit-commitment", {
+    onSuccess: onEmitted,
     onError: toastError(t, "brief.commitFailed"),
   });
+  const commitPartial = useActionMutation("emit-partial-certificate", {
+    onSuccess: onEmitted,
+    onError: toastError(t, "brief.commitFailed"),
+  });
+  const [partialContext, setPartialContext] = useState<{
+    updatedAt: string;
+    count: number;
+    total: number;
+  } | null>(null);
   const commitmentRef = useRef<HTMLDivElement>(null);
   const [scrollToCommitment, setScrollToCommitment] = useState(false);
   useEffect(() => {
@@ -228,7 +238,11 @@ export default function BriefRoute() {
     ? findUndetectedCitations(brief.body, citations)
     : [];
   const commitment = brief.commitment as CommitmentData | null;
-  const busy = verify.isPending || update.isPending || commit.isPending;
+  const busy =
+    verify.isPending ||
+    update.isPending ||
+    commit.isPending ||
+    commitPartial.isPending;
   const activity = getActivityItems(review, citations, {
     currentVerification: Boolean(brief.meta),
   });
@@ -391,11 +405,24 @@ export default function BriefRoute() {
             </div>
             <Button
               variant="outline"
-              disabled={busy || editing || !brief.verdict || !meta?.total_citas}
+              disabled={
+                busy ||
+                editing ||
+                !brief.verdict ||
+                !meta?.total_citas ||
+                !meta?.citas_verificadas
+              }
               onClick={() =>
                 brief.verdict === "TODAS_VERIFICADAS"
                   ? commit.mutate({ briefId })
-                  : setConfirmPartial(true)
+                  : (setPartialContext({
+                      updatedAt: brief.updatedAt,
+                      count:
+                        (meta?.total_citas ?? 0) -
+                        (meta?.citas_verificadas ?? 0),
+                      total: meta?.total_citas ?? 0,
+                    }),
+                    setConfirmPartial(true))
               }
             >
               <IconCertificate className="size-4" /> {t("brief.emitCommitment")}
@@ -522,20 +549,24 @@ export default function BriefRoute() {
             <AlertDialogTitle>{t("brief.partialTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
               {t("brief.partialBody", {
-                count: (meta?.total_citas ?? 0) - (meta?.citas_verificadas ?? 0),
-                total: meta?.total_citas ?? 0,
+                count: partialContext?.count ?? 0,
+                total: partialContext?.total ?? 0,
               })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={commit.isPending}>
+            <AlertDialogCancel disabled={commitPartial.isPending}>
               {t("brief.partialCancel")}
             </AlertDialogCancel>
             <Button
-              disabled={commit.isPending}
+              disabled={commitPartial.isPending || !partialContext}
               onClick={() => {
                 setConfirmPartial(false);
-                commit.mutate({ briefId });
+                if (partialContext)
+                  commitPartial.mutate({
+                    briefId,
+                    expectedUpdatedAt: partialContext.updatedAt,
+                  });
               }}
             >
               {t("brief.partialConfirm")}

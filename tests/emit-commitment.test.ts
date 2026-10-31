@@ -316,6 +316,46 @@ describe("emit-commitment", () => {
       );
     });
 
+    it("rejects a partial confirmation on a stale revision", async () => {
+      await expect(
+        asLawyer(() =>
+          emitPartialCertificate.run(
+            { briefId: "b1", expectedUpdatedAt: "2000-01-01T00:00:00.000Z" },
+            CTX,
+          ),
+        ),
+      ).rejects.toMatchObject({ statusCode: 409, errorCode: "brief_changed" });
+      expect(holder.runConstancia).not.toHaveBeenCalled();
+      expect((await row()).commitmentJson).toBeNull();
+      const decisions = (
+        await db.select().from(schema.reviewItems)
+      ).filter((r) => r.kind === "decision");
+      expect(decisions).toHaveLength(0);
+    });
+
+    it("rejects a partial with zero verified citations", async () => {
+      await db
+        .update(schema.citations)
+        .set({ status: "ambiguous" })
+        .where(eq(schema.citations.id, "c1"));
+      for (const action of [emitCommitment, emitPartialCertificate]) {
+        await expect(
+          asLawyer(() =>
+            action.run(
+              action === emitPartialCertificate
+                ? { briefId: "b1", expectedUpdatedAt: UPDATED_AT }
+                : { briefId: "b1" },
+              CTX,
+            ),
+          ),
+        ).rejects.toMatchObject({
+          statusCode: 409,
+          errorCode: "nothing_verified",
+        });
+      }
+      expect(holder.runConstancia).not.toHaveBeenCalled();
+    });
+
     it("rejects emission without the lawyer's confirmation", async () => {
       await expect(
         asLawyer(() => emitCommitment.run({ briefId: "b1" }, CTX)),
@@ -335,7 +375,10 @@ describe("emit-commitment", () => {
 
     it("emits a partial certificate listing every citation when the lawyer confirms", async () => {
       const result = await asLawyer(() =>
-        emitPartialCertificate.run({ briefId: "b1" }, CTX),
+        emitPartialCertificate.run(
+          { briefId: "b1", expectedUpdatedAt: UPDATED_AT },
+          CTX,
+        ),
       );
       expect(result.partial).toBe(true);
       const cert = result.certificate!;
@@ -376,7 +419,10 @@ describe("emit-commitment", () => {
         }),
       );
       const result = await asLawyer(() =>
-        emitPartialCertificate.run({ briefId: "b1" }, CTX),
+        emitPartialCertificate.run(
+          { briefId: "b1", expectedUpdatedAt: UPDATED_AT },
+          CTX,
+        ),
       );
       expect(result.partial).toBe(false);
       expect(result.certificate!.parcial).toBe(false);
@@ -391,9 +437,15 @@ describe("emit-commitment", () => {
   describe("SIN_CITAS", () => {
     it("rejects both actions with no_citations", async () => {
       await seed("SIN_CITAS", []);
-      for (const action of [emitCommitment, emitPartialCertificate]) {
+      for (const [action, args] of [
+        [emitCommitment, { briefId: "b1" }],
+        [
+          emitPartialCertificate,
+          { briefId: "b1", expectedUpdatedAt: UPDATED_AT },
+        ],
+      ] as const) {
         await expect(
-          asLawyer(() => action.run({ briefId: "b1" }, CTX)),
+          asLawyer(() => action.run(args, CTX)),
         ).rejects.toMatchObject({
           statusCode: 409,
           errorCode: "no_citations",
@@ -411,7 +463,10 @@ describe("emit-commitment", () => {
       ]);
       await expect(
         asLawyer(() =>
-          emitPartialCertificate.run({ briefId: "b1" }, CTX),
+          emitPartialCertificate.run(
+            { briefId: "b1", expectedUpdatedAt: UPDATED_AT },
+            CTX,
+          ),
         ),
       ).rejects.toMatchObject({
         statusCode: 409,

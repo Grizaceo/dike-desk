@@ -5,6 +5,7 @@ import { getDb, schema } from "../db/index.js";
 import { isoNow } from "../db/timestamps.js";
 import { commitmentHash } from "./brief-hash.js";
 import {
+  assertBriefRevision,
   assertBriefSnapshot,
   lockBrief,
   nextBriefUpdatedAt,
@@ -67,6 +68,11 @@ function assertEmissionAllowed(
       errorCode: "no_citations",
       statusCode: 409,
     });
+  if (!citations.some((c) => c.status === "verified"))
+    fail("Ninguna cita quedó verificada: no hay nada que certificar.", {
+      errorCode: "nothing_verified",
+      statusCode: 409,
+    });
   if (brief.verdict !== "TODAS_VERIFICADAS" && !partialConfirmed)
     fail(
       "Hay citas sin verificar: pide al abogado que confirme la emisión parcial en la pantalla.",
@@ -80,11 +86,16 @@ function assertEmissionAllowed(
  */
 export async function emitCertificate(
   briefId: string,
-  { partialConfirmed }: { partialConfirmed: boolean },
+  { partialConfirmed, expectedUpdatedAt }: {
+    partialConfirmed: boolean;
+    expectedUpdatedAt?: string;
+  },
   ctx: ActionCtx,
 ) {
   const ownerEmail = requireUser(ctx);
   const brief = await requireBrief(briefId, "editor");
+  if (expectedUpdatedAt !== undefined)
+    assertBriefRevision(brief.updatedAt, expectedUpdatedAt);
   const preCitations = await getDb()
     .select({ status: schema.citations.status })
     .from(schema.citations)
@@ -106,6 +117,8 @@ export async function emitCertificate(
   await getDb().transaction(async (tx) => {
     const locked = await lockBrief(tx, briefId, "editor");
     assertBriefSnapshot(locked, snapshot);
+    if (expectedUpdatedAt !== undefined)
+      assertBriefRevision(locked.updatedAt, expectedUpdatedAt);
     const storedCitations = await tx
       .select()
       .from(schema.citations)
@@ -131,7 +144,7 @@ export async function emitCertificate(
     }
     if (signature && signatureHash(signature) !== hash) {
       fail(
-        "La huella del commitment no coincide con la del sello. No se guardó el certificado.",
+        "La huella commitment_hash no coincide con la del sello. No se guardó el certificado.",
         { errorCode: "commitment_hash_mismatch", statusCode: 502 },
       );
     }
