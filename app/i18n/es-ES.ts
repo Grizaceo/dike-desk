@@ -90,6 +90,7 @@ const messages = {
     editSave: "Guardar",
     editCancel: "Cancelar",
     editText: "Editar texto",
+    editBodyLabel: "Texto del escrito",
     verifyButton: "Verificar con Diké",
     verifyProgress: "Verificando…",
     emitCommitment: "Emitir commitment",
@@ -122,6 +123,7 @@ const messages = {
     sourceLink: "Fuente",
     askAgentPlaceholder:
       'Cuéntale al agente… ej. "esto es el Código del Trabajo"',
+    commentLabel: "Comentario para el agente",
     askAgentButton: "Enviar al agente",
     acceptButton: "Aceptar",
     rejectButton: "Rechazar",

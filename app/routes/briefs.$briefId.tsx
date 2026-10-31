@@ -249,11 +249,17 @@ export default function BriefRoute() {
         ) : null}
 
         {editing ? (
-          <textarea
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            className="min-h-[60vh] w-full rounded-xl border border-input bg-background p-5 font-serif text-[15px] leading-7 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
+          <>
+            <label htmlFor="brief-edit-body" className="sr-only">
+              {t("brief.editBodyLabel")}
+            </label>
+            <textarea
+              id="brief-edit-body"
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              className="min-h-[60vh] w-full rounded-xl border border-input bg-background p-5 font-serif text-[15px] leading-7 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </>
         ) : (
           <article className="whitespace-pre-wrap rounded-xl border border-border bg-card p-5 font-serif text-[15px] leading-7">
             {segments.map((part, index) =>

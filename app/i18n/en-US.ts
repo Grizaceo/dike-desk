@@ -89,6 +89,7 @@ const messages = {
     editSave: "Save",
     editCancel: "Cancel",
     editText: "Edit text",
+    editBodyLabel: "Brief text",
     verifyButton: "Verify with Diké",
     verifyProgress: "Verifying…",
     emitCommitment: "Emit commitment",
@@ -121,6 +122,7 @@ const messages = {
     sourceLink: "Source",
     askAgentPlaceholder:
       'Tell the agent… e.g. "this is the Código del Trabajo"',
+    commentLabel: "Comment for the agent",
     askAgentButton: "Send to agent",
     acceptButton: "Accept",
     rejectButton: "Reject",

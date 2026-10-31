@@ -221,7 +221,11 @@ export default function CitationCard({
       ) : null}
 
       <form onSubmit={askAgent} className="flex gap-2">
+        <label htmlFor={`citation-comment-${citation.id}`} className="sr-only">
+          {t("brief.commentLabel")}
+        </label>
         <input
+          id={`citation-comment-${citation.id}`}
           value={comment}
           onChange={(event) => setComment(event.target.value)}
           placeholder={t("brief.askAgentPlaceholder")}
