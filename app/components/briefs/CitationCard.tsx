@@ -59,13 +59,13 @@ export default function CitationCard({
   function askAgent(event: React.FormEvent) {
     event.preventDefault();
     const text = comment.trim();
-    if (!text) return;
-    setComment("");
+    if (!text || addComment.isPending) return;
     // The comment stays on the page; the agent picks it up in a visible turn.
     addComment.mutate(
       { briefId, citationId: citation.id, body: text },
       {
-        onSuccess: (result) =>
+        onSuccess: (result) => {
+          setComment("");
           sendToAgentChat({
             message: text,
             context: JSON.stringify({
@@ -78,7 +78,8 @@ export default function CitationCard({
             }),
             submit: true,
             openSidebar: true,
-          }),
+          });
+        },
       },
     );
   }
@@ -224,13 +225,14 @@ export default function CitationCard({
           value={comment}
           onChange={(event) => setComment(event.target.value)}
           placeholder={t("brief.askAgentPlaceholder")}
-          className="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          disabled={addComment.isPending}
+          className="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
         />
         <Button
           type="submit"
           size="sm"
           variant="outline"
-          disabled={!comment.trim()}
+          disabled={!comment.trim() || addComment.isPending}
           aria-label={t("brief.askAgentButton")}
           title={t("brief.askAgentButton")}
         >
