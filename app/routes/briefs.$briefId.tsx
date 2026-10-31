@@ -118,11 +118,17 @@ export default function BriefRoute() {
           total: result.meta.total_citas,
         }),
       ),
-    onError: toastError(t, "brief.verifyFailed"),
+    onError: (error) => {
+      toastError(t, "brief.verifyFailed")(error);
+      void refetch();
+    },
   });
   const update = useActionMutation("update-brief", {
     onSuccess: () => setEditing(false),
-    onError: toastError(t, "brief.saveFailed"),
+    onError: (error) => {
+      toastError(t, "brief.saveFailed")(error);
+      void refetch();
+    },
   });
   // The panel reads the commitment from get-brief, which every successful
   // mutation refetches; the server clears it whenever the text changes.

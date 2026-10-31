@@ -46,7 +46,7 @@ export function nextBriefUpdatedAt(previous: string) {
 
 export function assertBriefRevision(current: string, expected: string) {
   if (current !== expected)
-    fail("El escrito cambió mientras lo editabas. Recarga y vuelve a intentarlo.", {
+    fail("El escrito cambió desde que lo abriste. Revisa la versión actual y vuelve a intentarlo.", {
       errorCode: "brief_changed",
       statusCode: 409,
     });
@@ -60,7 +60,7 @@ export function assertBriefSnapshot(
     current.updatedAt !== expected.updatedAt ||
     current.body !== expected.body
   )
-    fail("El escrito cambió mientras lo editabas. Recarga y vuelve a intentarlo.", {
+    fail("El escrito cambió desde que lo abriste. Revisa la versión actual y vuelve a intentarlo.", {
       errorCode: "brief_changed",
       statusCode: 409,
     });
