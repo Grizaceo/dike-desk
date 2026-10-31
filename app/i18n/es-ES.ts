@@ -84,10 +84,13 @@ const messages = {
   brief: {
     backToList: "Escritos",
     notFound: "Escrito no encontrado.",
+    loadFailed: "No se pudo cargar este escrito.",
+    retry: "Reintentar",
     backToBriefs: "Volver a escritos",
     editSave: "Guardar",
     editCancel: "Cancelar",
     editText: "Editar texto",
+    editBodyLabel: "Texto del escrito",
     verifyButton: "Verificar con Diké",
     verifyProgress: "Verificando…",
     emitCommitment: "Emitir commitment",
@@ -120,13 +123,21 @@ const messages = {
     sourceLink: "Fuente",
     askAgentPlaceholder:
       'Cuéntale al agente… ej. "esto es el Código del Trabajo"',
+    commentLabel: "Comentario para el agente",
     askAgentButton: "Enviar al agente",
     acceptButton: "Aceptar",
     rejectButton: "Rechazar",
+    showInText: "Ver en el texto",
+    citationMark: "{{citation}}, {{status}}",
+    unlocatedOne:
+      "1 cita no se pudo ubicar en el texto. Verifica de nuevo para actualizar su posición.",
+    unlocatedMany:
+      "{{count}} citas no se pudieron ubicar en el texto. Verifica de nuevo para actualizar sus posiciones.",
     acceptedAgentMessage:
       "Acepté la sugerencia para «{{citation}}». Verifica de nuevo el escrito e informa lo que diga Diké.",
     copy: "Copiar",
     copySuccess: "Copiado al portapapeles",
+    copyFailed: "No se pudo copiar al portapapeles.",
   },
   briefs: {
     title: "Escritos",
@@ -138,6 +149,8 @@ const messages = {
     createButton: "Crear escrito",
     loadDemo: "Cargar demo sintético",
     createFailed: "No se pudo crear el escrito.",
+    loadFailed: "No se pudieron cargar los escritos.",
+    retry: "Reintentar",
     empty: "Aún no hay escritos.",
   },
   commitment: {

@@ -9,18 +9,19 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
 
+import { VerdictBadge } from "@/components/briefs/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { VerdictBadge } from "@/components/briefs/StatusBadge";
 
 export default function BriefsIndexRoute() {
   const navigate = useNavigate();
   const t = useT();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const { data, isPending } = useActionQuery("list-briefs", {});
+  const { data, isPending, isError, error, refetch, isFetching } =
+    useActionQuery("list-briefs", {});
   const create = useActionMutation("create-brief", {
     onSuccess: (result) => navigate(`/briefs/${result.id}`),
     onError: (error) =>
@@ -30,7 +31,9 @@ export default function BriefsIndexRoute() {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6">
       <header>
-        <h1 className="text-xl font-semibold tracking-tight">{t("briefs.title")}</h1>
+        <h1 className="text-xl font-semibold tracking-tight">
+          {t("briefs.title")}
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {t("briefs.description")}
         </p>
@@ -81,8 +84,23 @@ export default function BriefsIndexRoute() {
       </form>
 
       <section className="flex flex-col gap-2">
-        {isPending ? (
+        {isPending && !data ? (
           <Skeleton className="h-16 rounded-xl" />
+        ) : isError && !data ? (
+          <div
+            role="alert"
+            className="flex flex-col items-center gap-3 py-6 text-center text-sm"
+          >
+            <p>{actionErrorMessage(error) ?? t("briefs.loadFailed")}</p>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isFetching}
+              onClick={() => void refetch()}
+            >
+              {t("briefs.retry")}
+            </Button>
+          </div>
         ) : data?.briefs.length ? (
           data.briefs.map((brief) => (
             <Link

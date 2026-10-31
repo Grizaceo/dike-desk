@@ -83,10 +83,13 @@ const messages = {
   brief: {
     backToList: "Briefs",
     notFound: "Brief not found.",
+    loadFailed: "Could not load this brief.",
+    retry: "Retry",
     backToBriefs: "Back to briefs",
     editSave: "Save",
     editCancel: "Cancel",
     editText: "Edit text",
+    editBodyLabel: "Brief text",
     verifyButton: "Verify with Diké",
     verifyProgress: "Verifying…",
     emitCommitment: "Emit commitment",
@@ -119,13 +122,21 @@ const messages = {
     sourceLink: "Source",
     askAgentPlaceholder:
       'Tell the agent… e.g. "this is the Código del Trabajo"',
+    commentLabel: "Comment for the agent",
     askAgentButton: "Send to agent",
     acceptButton: "Accept",
     rejectButton: "Reject",
+    showInText: "Show in text",
+    citationMark: "{{citation}}, {{status}}",
+    unlocatedOne:
+      "1 citation could not be located in the text. Verify again to refresh its position.",
+    unlocatedMany:
+      "{{count}} citations could not be located in the text. Verify again to refresh their positions.",
     acceptedAgentMessage:
       'I accepted the suggestion for "{{citation}}". Verify the brief again and report what Diké says.',
     copy: "Copy",
     copySuccess: "Copied to clipboard",
+    copyFailed: "Could not copy to the clipboard.",
   },
   briefs: {
     title: "Briefs",
@@ -137,6 +148,8 @@ const messages = {
     createButton: "Create brief",
     loadDemo: "Load synthetic demo",
     createFailed: "Could not create the brief.",
+    loadFailed: "Could not load briefs.",
+    retry: "Retry",
     empty: "No briefs yet.",
   },
   commitment: {

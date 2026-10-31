@@ -10,23 +10,23 @@ export const STATUS_STYLES: Record<
 > = {
   verified: {
     badge: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
-    mark: "bg-emerald-500/15 decoration-emerald-600",
+    mark: "bg-emerald-500/15 decoration-emerald-600 decoration-solid",
   },
   ambiguous: {
     badge: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
-    mark: "bg-amber-500/20 decoration-amber-600",
+    mark: "bg-amber-500/20 decoration-amber-600 decoration-wavy",
   },
   refused: {
     badge: "bg-red-500/15 text-red-700 dark:text-red-300",
-    mark: "bg-red-500/15 decoration-red-600",
+    mark: "bg-red-500/15 decoration-red-600 decoration-dashed",
   },
   stale: {
     badge: "bg-muted text-muted-foreground",
-    mark: "bg-muted decoration-muted-foreground",
+    mark: "bg-muted decoration-muted-foreground decoration-dotted",
   },
 };
 
-const STATUS_LABEL_KEYS: Record<CitationStatus, string> = {
+export const STATUS_LABEL_KEYS: Record<CitationStatus, string> = {
   verified: "status.verified",
   ambiguous: "status.ambiguous",
   refused: "status.refused",

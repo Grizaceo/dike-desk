@@ -22,13 +22,18 @@ import {
   ReviewAuthor,
   SuggestionState,
 } from "@/components/briefs/ReviewAuthor";
-import { STATUS_STYLES, VerdictBadge } from "@/components/briefs/StatusBadge";
+import {
+  STATUS_LABEL_KEYS,
+  STATUS_STYLES,
+  VerdictBadge,
+} from "@/components/briefs/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   bodySegments,
   getActivityItems,
   getCitationItems,
+  isMissingBriefError,
 } from "@/lib/brief-review";
 import { cn } from "@/lib/utils";
 
@@ -36,11 +41,28 @@ function toastError(fallback: string) {
   return (error: unknown) => toast.error(actionErrorMessage(error) ?? fallback);
 }
 
+function scrollBehavior(): ScrollBehavior {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ? "auto"
+    : "smooth";
+}
+
+function scrollAndFocus(el: HTMLElement, block: ScrollLogicalPosition) {
+  el.scrollIntoView({ behavior: scrollBehavior(), block });
+  el.focus({ preventScroll: true });
+}
+
 export default function BriefRoute() {
   const { briefId = "" } = useParams();
   const t = useT();
-  const { data, isPending } = useActionQuery("get-brief", { briefId });
+  const { data, isPending, isError, error, refetch, isFetching } =
+    useActionQuery("get-brief", { briefId });
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [cardFocus, setCardFocus] = useState<{
+    id: string;
+    nonce: number;
+  } | null>(null);
+  const focusNonce = useRef(0);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [editBase, setEditBase] = useState("");
@@ -78,19 +100,33 @@ export default function BriefRoute() {
     if (!scrollToCommitment || !data?.brief.commitment) return;
     const el = commitmentRef.current;
     if (!el) return;
-    const reduced = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    el.scrollIntoView({
-      behavior: reduced ? "auto" : "smooth",
-      block: "start",
-    });
+    el.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
     setScrollToCommitment(false);
   }, [scrollToCommitment, data?.brief.commitment]);
 
+  useEffect(() => {
+    if (!cardFocus) return;
+    const el = document.getElementById(`citation-card-${cardFocus.id}`);
+    if (!el) return;
+    scrollAndFocus(el, "nearest");
+    setCardFocus(null);
+  }, [cardFocus]);
+
+  function selectCitationMark(id: string) {
+    setSelectedId(id);
+    focusNonce.current += 1;
+    setCardFocus({ id, nonce: focusNonce.current });
+  }
+
+  function focusCitationMark(id: string) {
+    const el = document.getElementById(`citation-mark-${id}`);
+    if (!el) return;
+    scrollAndFocus(el, "center");
+  }
+
   const citations = data?.citations ?? [];
   const review = data?.review ?? [];
-  const parts = useMemo(
+  const { segments, unlocated } = useMemo(
     () => bodySegments(data?.brief.body ?? "", citations),
     [data?.brief.body, citations],
   );
@@ -104,6 +140,26 @@ export default function BriefRoute() {
     );
   }
   if (!data) {
+    if (isError && !isMissingBriefError(error)) {
+      return (
+        <main className="flex flex-col items-start gap-3 p-6 text-sm">
+          <p role="alert">
+            {actionErrorMessage(error) ?? t("brief.loadFailed")}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isFetching}
+            onClick={() => void refetch()}
+          >
+            {t("brief.retry")}
+          </Button>
+          <Link className="underline" to="/briefs">
+            {t("brief.backToBriefs")}
+          </Link>
+        </main>
+      );
+    }
     return (
       <main className="p-6 text-sm text-muted-foreground">
         {t("brief.notFound")}{" "}
@@ -178,20 +234,46 @@ export default function BriefRoute() {
           </div>
         </div>
 
+        {unlocated.length > 0 ? (
+          <p
+            role="status"
+            className="rounded-lg border border-border bg-muted px-3 py-2 text-sm"
+          >
+            {t(
+              unlocated.length === 1
+                ? "brief.unlocatedOne"
+                : "brief.unlocatedMany",
+              { count: unlocated.length },
+            )}
+          </p>
+        ) : null}
+
         {editing ? (
-          <textarea
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            className="min-h-[60vh] w-full rounded-xl border border-input bg-background p-5 font-serif text-[15px] leading-7 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
+          <>
+            <label htmlFor="brief-edit-body" className="sr-only">
+              {t("brief.editBodyLabel")}
+            </label>
+            <textarea
+              id="brief-edit-body"
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              className="min-h-[60vh] w-full rounded-xl border border-input bg-background p-5 font-serif text-[15px] leading-7 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </>
         ) : (
           <article className="whitespace-pre-wrap rounded-xl border border-border bg-card p-5 font-serif text-[15px] leading-7">
-            {parts.map((part, index) =>
+            {segments.map((part, index) =>
               part.citation ? (
                 <button
-                  key={index}
+                  key={part.citation.id}
+                  id={`citation-mark-${part.citation.id}`}
                   type="button"
-                  onClick={() => setSelectedId(part.citation!.id)}
+                  aria-pressed={selectedId === part.citation.id}
+                  aria-label={t("brief.citationMark", {
+                    citation: part.text,
+                    status: t(STATUS_LABEL_KEYS[part.citation.status]),
+                  })}
+                  onClick={() => selectCitationMark(part.citation!.id)}
                   className={cn(
                     "rounded px-0.5 underline decoration-2 underline-offset-4",
                     STATUS_STYLES[part.citation.status].mark,
@@ -257,6 +339,13 @@ export default function BriefRoute() {
             items={getCitationItems(review, citation.id)}
             selected={selectedId === citation.id}
             onSelect={() => setSelectedId(citation.id)}
+            decisionsLocked={busy || editing}
+            onShowInText={
+              !editing &&
+              segments.some((part) => part.citation?.id === citation.id)
+                ? () => focusCitationMark(citation.id)
+                : undefined
+            }
           />
         ))}
         {commitment ? (

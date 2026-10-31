@@ -33,12 +33,18 @@ export default function CitationCard({
   items,
   selected,
   onSelect,
+  onShowInText,
+  decisionsLocked = false,
 }: {
   briefId: string;
   citation: Citation;
   items: ReviewItem[];
   selected: boolean;
   onSelect: () => void;
+  /** Scroll the inline mark back into view. Omitted when the mark is not rendered. */
+  onShowInText?: (() => void) | undefined;
+  /** Page is editing, verifying, saving, or emitting a commitment. */
+  decisionsLocked?: boolean;
 }) {
   const t = useT();
   const [comment, setComment] = useState("");
@@ -53,13 +59,13 @@ export default function CitationCard({
   function askAgent(event: React.FormEvent) {
     event.preventDefault();
     const text = comment.trim();
-    if (!text) return;
-    setComment("");
+    if (!text || addComment.isPending) return;
     // The comment stays on the page; the agent picks it up in a visible turn.
     addComment.mutate(
       { briefId, citationId: citation.id, body: text },
       {
-        onSuccess: (result) =>
+        onSuccess: (result) => {
+          setComment("");
           sendToAgentChat({
             message: text,
             context: JSON.stringify({
@@ -72,16 +78,19 @@ export default function CitationCard({
             }),
             submit: true,
             openSidebar: true,
-          }),
+          });
+        },
       },
     );
   }
 
   return (
     <article
+      id={`citation-card-${citation.id}`}
+      tabIndex={-1}
       onClick={onSelect}
       className={cn(
-        "flex flex-col gap-2 rounded-xl border bg-card p-3",
+        "flex flex-col gap-2 rounded-xl border bg-card p-3 focus:outline-none focus:ring-2 focus:ring-ring",
         selected ? "border-ring" : "border-border",
       )}
     >
@@ -89,6 +98,20 @@ export default function CitationCard({
         <strong className="min-w-0 text-sm font-medium">{citation.raw}</strong>
         <StatusBadge status={citation.status} />
       </div>
+      {selected && onShowInText ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="self-start"
+          onClick={(event) => {
+            event.stopPropagation();
+            onShowInText();
+          }}
+        >
+          {t("brief.showInText")}
+        </Button>
+      ) : null}
       {citation.label ? (
         <p className="text-xs text-muted-foreground">{citation.label}</p>
       ) : null}
@@ -133,7 +156,7 @@ export default function CitationCard({
               <div className="mt-2 flex gap-2">
                 <Button
                   size="sm"
-                  disabled={decide.isPending}
+                  disabled={decide.isPending || decisionsLocked}
                   onClick={() =>
                     decide.mutate(
                       { suggestionId: item.id, decision: "accepted" },
@@ -161,7 +184,7 @@ export default function CitationCard({
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={decide.isPending}
+                  disabled={decide.isPending || decisionsLocked}
                   onClick={() =>
                     decide.mutate({
                       suggestionId: item.id,
@@ -188,18 +211,32 @@ export default function CitationCard({
         ),
       )}
 
+      {decide.isError ? (
+        <p
+          role="alert"
+          className="text-xs font-medium text-red-700 dark:text-red-300"
+        >
+          {actionErrorMessage(decide.error) ?? t("brief.decideFailed")}
+        </p>
+      ) : null}
+
       <form onSubmit={askAgent} className="flex gap-2">
+        <label htmlFor={`citation-comment-${citation.id}`} className="sr-only">
+          {t("brief.commentLabel")}
+        </label>
         <input
+          id={`citation-comment-${citation.id}`}
           value={comment}
           onChange={(event) => setComment(event.target.value)}
           placeholder={t("brief.askAgentPlaceholder")}
-          className="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          disabled={addComment.isPending}
+          className="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
         />
         <Button
           type="submit"
           size="sm"
           variant="outline"
-          disabled={!comment.trim()}
+          disabled={!comment.trim() || addComment.isPending}
           aria-label={t("brief.askAgentButton")}
           title={t("brief.askAgentButton")}
         >
