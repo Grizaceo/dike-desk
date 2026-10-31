@@ -54,6 +54,7 @@ Citation review for Chilean legal briefs. `/briefs` lists briefs; `/briefs/:brie
 | decide-suggestion | Lawyer accepts/rejects (UI only)                  |
 | add-comment     | Comment on a brief or citation                      |
 | emit-commitment | Issue the verification certificate (blocked while citations are unverified; partial only with the lawyer's UI confirmation; carries the brief fingerprint) |
+| emit-partial-certificate | Same emission, allows partial (UI only — the lawyer's on-screen confirmation) |
 
 
 ### Pending in the Diké engine

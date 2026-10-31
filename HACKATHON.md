@@ -34,6 +34,7 @@ prompt and the navigation wiring.
   4/6 → comment on «artículo 60» → agent proposes «artículo 60 del Código del
   Trabajo» → lawyer accepts → agent re-verifies: 5/6, corpus `af1422d66d1e6eee`,
   as of 2026-10-30; «artículo 9999» stays refused with a withdrawal proposal.
+  (historial: flujo anterior, reemplazado el 2026-10-31; ver DEMO.md)
   Comment author now comes from the caller (UI → user, anything else → agent),
   accepting a suggestion expires the other pending ones, and accepting hands
   the re-verify to the agent. The agent cannot decide suggestions
@@ -47,7 +48,8 @@ prompt and the navigation wiring.
   for what only the lawyer can supply (prompt only; decided option (a)).
   Still not exercised live: replacing a raw that absorbed trailing words
   («… dispone»). On the synthetic brief the only fixable raw («artículo 60»)
-  has none
+  has none.
+  (historial: flujo anterior, reemplazado el 2026-10-31; ver DEMO.md)
 - [x] Commitment panel: summary, JSON download, and the offline verification command when signed (unsigned says there is nothing to verify)
 - [x] Signed commitment through the app (2026-10-30): local engine
   (`DIKE_BIN`) + `LEXO_CONTENT_SIGNING_KEY_PATH`, emitted and downloaded from the

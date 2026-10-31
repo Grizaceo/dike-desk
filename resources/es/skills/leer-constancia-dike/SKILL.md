@@ -21,7 +21,7 @@ Informa siempre `pack_hash` y `as_of` junto al resultado.
 | Estado | Significado | Qué hacer |
 | --- | --- | --- |
 | `verified` | Existe y está vigente al `as_of` en la última corrida sobre el texto actual. | Informarla con `pack_hash` y `as_of`. |
-| `ambiguous` | La referencia admite más de una norma (por ejemplo, «artículo 60» sin cuerpo legal). | Preguntar o proponer con `propose-fix` el cuerpo legal correcto; después verificar de nuevo. |
+| `ambiguous` | La referencia admite más de una norma (por ejemplo, «artículo 60» sin cuerpo legal). |  Preguntar por el cuerpo legal. Antes de proponer completarlo, revisar si la norma sostiene la frase; si no la sostiene (p. ej., el art. 60 del Código del Trabajo en el caso de demostración), proponer el retiro o pedir la norma correcta. Después, verificar de nuevo. |
 | `refused` | Diké no pudo verificarla: no resuelve en su corpus, no tiene texto citable, no rige a la fecha o falta procedencia; en la interfaz se muestra «No se pudo verificar». No prueba por sí solo que la norma no exista. | Leer la resolución, explicar el motivo y proponer un arreglo o el retiro. |
 | `stale` | El texto cambió después de la última verificación. | No usar el estado anterior; verificar de nuevo. |
 

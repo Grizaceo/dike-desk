@@ -21,7 +21,7 @@ Always report `pack_hash` and `as_of` with the result.
 | Status | Meaning | What to do |
 | --- | --- | --- |
 | `verified` | It exists and is in force on `as_of` in the latest run on the current text. | Report it with `pack_hash` and `as_of`. |
-| `ambiguous` | The reference fits more than one provision (for example "artículo 60" with no code or statute). | Ask, or propose the right body of law with `propose-fix`; then verify again. |
+| `ambiguous` | The reference fits more than one provision (for example "artículo 60" with no code or statute). |  Ask which body of law it is. Before proposing to complete it, check whether the provision supports the sentence; if it does not (e.g. art. 60 of the Código del Trabajo in the demo case), propose a withdrawal or ask for the right provision. Then verify again. |
 | `refused` | Diké could not verify it: it does not resolve in its corpus, has no citable text, was not in force on the date, or lacks provenance; the UI shows “Could not verify”. This alone does not prove that the provision does not exist. | Read the resolution, explain the reason and propose a fix or a withdrawal. |
 | `stale` | The text changed after the latest verification. | Do not use the previous status; verify again. |
 
