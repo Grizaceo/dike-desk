@@ -50,6 +50,8 @@ The review ledger follows the review-graph idea from the wider LexO
 ecosystem: proposals, decisions and comments are rows, and rejected
 suggestions are kept, not deleted.
 
+The agent is **LexO**, an orchestrator with a team of sub-agents (researcher, case designer, drafter, contradictor, judge, deadlines clerk), ten skills and a layered memory policy, adapted from the author's earlier LexO work. They are seeded as agent resources you can read and edit in the agent page; the content lives in [`resources/`](resources/) (Spanish, with an English mirror). Seeding only adds missing resources, so later content changes do not overwrite an existing install or your edits.
+
 ## Run it
 
 Requirements: Node ≥ 22.22, pnpm (via `corepack enable`), Docker.

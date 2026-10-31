@@ -1,0 +1,48 @@
+---
+name: leer-constancia-dike
+description: >-
+  Úsala al informar o actuar sobre un resultado de verify-brief o emit-commitment: qué significa cada estado, cuándo proponer un arreglo o un retiro y qué no afirma Diké. /
+  Use when reporting or acting on a verify-brief or emit-commitment result: what each status means, when to propose a fix or a withdrawal, and what Diké does not claim.
+---
+
+# Leer la constancia de Diké
+
+Diké es el único que fija el estado de una cita. LexO lo informa con fidelidad y nunca lo mejora en prosa.
+
+## Qué acredita y qué no
+
+- **Acredita** que la cita identifica una norma de su corpus, que el texto fuente está íntegro (hash) y que estaba vigente a la fecha de referencia (`as_of`), según el corpus identificado por `pack_hash`.
+- **No acredita** que la norma respalde el argumento, que la interpretación sea correcta ni nada sobre jurisprudencia o doctrina.
+
+Informa siempre `pack_hash` y `as_of` junto al resultado.
+
+## Estados de cita
+
+| Estado | Significado | Qué hacer |
+| --- | --- | --- |
+| `verified` | Verificada en la última corrida sobre el texto actual. | Informarla con `pack_hash` y `as_of`. |
+| `ambiguous` | La referencia admite más de una norma (por ejemplo, «artículo 60» sin cuerpo legal). | Preguntar o proponer con `propose-fix` el cuerpo legal correcto; después verificar de nuevo. |
+| `refused` | Diké no pudo verificarla: no resuelve en su corpus, no tiene texto citable, no rige a la fecha o falta procedencia. No prueba por sí solo que la norma no exista. | Leer la resolución, explicar el motivo y proponer un arreglo o el retiro. |
+| `stale` | El texto cambió después de la última verificación. | No usar el estado anterior; verificar de nuevo. |
+
+Las resoluciones del motor detallan el motivo, por ejemplo: `AMBIGUOUS`, `UNRESOLVABLE`, `NOT_IN_FORCE`, `TEMPORAL_UNKNOWN`, `HISTORICAL_TEXT_UNAVAILABLE` y `PROVENANCE_INCOMPLETE`. Cítalas tal como vienen; no las traduzcas a una conclusión más fuerte.
+
+## Veredictos del escrito
+
+- `TODAS_VERIFICADAS` y `CON_PROBLEMAS`: resultado de una verificación con citas.
+- `SIN_CITAS`: la gramática del motor no vio citas. No significa que el escrito no cite normas.
+- `SIN_CORPUS`: no había corpus con qué verificar. No es un resultado favorable.
+
+## Vigencia no es fecha
+
+La fecha de un documento no prueba su vigencia. Una incertidumbre temporal (`TEMPORAL_UNKNOWN`, `HISTORICAL_TEXT_UNAVAILABLE`) no equivale a derogación: informa la incertidumbre, no una conclusión negativa ni positiva.
+
+## Arreglos y retiros
+
+1. `propose-fix` reemplaza el texto **completo** de la cita (`raw`). Si el motor incluyó palabras de arrastre («… dispone»), consérvalas en el reemplazo.
+2. Un retiro (reemplazo vacío) puede dejar la frase rota. Avísalo en un comentario, cita cómo quedaría la frase y propón una reescritura en prosa que el abogado aplique con «Editar texto». No inventes hechos, pruebas ni normas: marca entre `[corchetes]` lo que solo el abogado puede aportar.
+3. Una propuesta no es evidencia. Después de que el abogado la acepte, ejecuta `verify-brief` antes de informar.
+
+## Commitment
+
+`emit-commitment` produce una constancia que incluye solo las citas verificadas. Si está firmada, se comprueba fuera de la app con el verificador independiente de Diké. Un campo de firma en el JSON no es una firma comprobada.

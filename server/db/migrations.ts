@@ -65,4 +65,12 @@ CREATE INDEX IF NOT EXISTS brief_shares_resource_idx ON brief_shares (resource_i
 CREATE INDEX IF NOT EXISTS citations_brief_idx ON citations (brief_id, position);
 CREATE INDEX IF NOT EXISTS review_items_brief_idx ON review_items (brief_id, created_at)`,
   },
+  {
+    version: 2,
+    name: "legal-team-seed-markers",
+    sql: `CREATE TABLE IF NOT EXISTS dike_desk_seed_markers (
+  key TEXT PRIMARY KEY,
+  applied_at TEXT NOT NULL DEFAULT (now())
+)`,
+  },
 ];

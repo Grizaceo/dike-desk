@@ -12,6 +12,7 @@ with Agent-Native, public Clips demo, submission form.
 | Synthetic demo brief | `dike/docs/hackathon/escrito_demo.md` | Copied into `server/lib/demo-brief.ts` |
 | Review-ledger idea | `review-graph` design in the author's LexO ecosystem | Concept only; no code copied |
 | Repair loop idea | `dike-shield` (Open Agent Hackathon 2026) | Concept only; no code copied |
+| LexO legal agent profiles and the agentic legal research methodology | The author's LexO workshop (Hermes profiles `lexo-lawyer`, `lexo-alpha` and its sub-agents), built before the hackathon | Adapted and generalized into `resources/`: instructions, six sub-agents, ten skills and the memory policy; no private data, code or dependencies copied |
 
 ## Built during the hackathon
 
@@ -58,5 +59,6 @@ prompt and the navigation wiring.
   Pending: a signature with the published key, only if it is logged in that register
 - [x] English/Spanish UI copy through the template's i18n catalog (2026-10-30: brief screen, commitment panel, list page, status/verdict badges, sidebar link). The agent's own replies follow the model's language
 - [ ] Optional: suggest a corrected article through IndexO / the legal graph (retrieval only; Diké still decides)
+- [x] LexO legal team as agent resources (2026-10-31): instructions, six sub-agents, ten skills, layered memory policy, seeded from `resources/es/` with an English mirror
 - [ ] Polish, then record the public Clips demo (synthetic brief only; no private data)
 - [ ] Submit at builder.io/hackathon/submit
