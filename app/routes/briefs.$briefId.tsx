@@ -22,7 +22,11 @@ import {
   ReviewAuthor,
   SuggestionState,
 } from "@/components/briefs/ReviewAuthor";
-import { STATUS_STYLES, VerdictBadge } from "@/components/briefs/StatusBadge";
+import {
+  STATUS_LABEL_KEYS,
+  STATUS_STYLES,
+  VerdictBadge,
+} from "@/components/briefs/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -236,6 +240,11 @@ export default function BriefRoute() {
                   key={part.citation.id}
                   id={`citation-mark-${part.citation.id}`}
                   type="button"
+                  aria-pressed={selectedId === part.citation.id}
+                  aria-label={t("brief.citationMark", {
+                    citation: part.text,
+                    status: t(STATUS_LABEL_KEYS[part.citation.status]),
+                  })}
                   onClick={() => selectCitationMark(part.citation!.id)}
                   className={cn(
                     "rounded px-0.5 underline decoration-2 underline-offset-4",

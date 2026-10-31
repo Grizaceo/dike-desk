@@ -45,6 +45,21 @@ function messageKeys(value: unknown, prefix = ""): string[] {
   return [prefix];
 }
 
+describe("citation marks", () => {
+  it("uses a different underline for each status", () => {
+    const decorations = Object.values(STATUS_STYLES).map(
+      (style) =>
+        style.mark.match(/decoration-(solid|double|dotted|dashed|wavy)/)?.[0],
+    );
+    expect(decorations).toEqual([
+      "decoration-solid",
+      "decoration-wavy",
+      "decoration-dashed",
+      "decoration-dotted",
+    ]);
+  });
+});
+
 describe("i18n catalogs", () => {
   it("keeps en-US and es-ES keys aligned", () => {
     expect(messageKeys(esES).sort()).toEqual(messageKeys(enUS).sort());

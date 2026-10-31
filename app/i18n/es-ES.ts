@@ -124,6 +124,7 @@ const messages = {
     acceptButton: "Aceptar",
     rejectButton: "Rechazar",
     showInText: "Ver en el texto",
+    citationMark: "{{citation}}, {{status}}",
     unlocatedOne:
       "1 cita no se pudo ubicar en el texto. Verifica de nuevo para actualizar su posición.",
     unlocatedMany:
