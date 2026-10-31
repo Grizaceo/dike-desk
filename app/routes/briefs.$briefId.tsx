@@ -33,6 +33,7 @@ import {
   bodySegments,
   getActivityItems,
   getCitationItems,
+  isMissingBriefError,
 } from "@/lib/brief-review";
 import { cn } from "@/lib/utils";
 
@@ -54,7 +55,8 @@ function scrollAndFocus(el: HTMLElement, block: ScrollLogicalPosition) {
 export default function BriefRoute() {
   const { briefId = "" } = useParams();
   const t = useT();
-  const { data, isPending } = useActionQuery("get-brief", { briefId });
+  const { data, isPending, isError, error, refetch, isFetching } =
+    useActionQuery("get-brief", { briefId });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [cardFocus, setCardFocus] = useState<{
     id: string;
@@ -138,6 +140,26 @@ export default function BriefRoute() {
     );
   }
   if (!data) {
+    if (isError && !isMissingBriefError(error)) {
+      return (
+        <main className="flex flex-col items-start gap-3 p-6 text-sm">
+          <p role="alert">
+            {actionErrorMessage(error) ?? t("brief.loadFailed")}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isFetching}
+            onClick={() => void refetch()}
+          >
+            {t("brief.retry")}
+          </Button>
+          <Link className="underline" to="/briefs">
+            {t("brief.backToBriefs")}
+          </Link>
+        </main>
+      );
+    }
     return (
       <main className="p-6 text-sm text-muted-foreground">
         {t("brief.notFound")}{" "}

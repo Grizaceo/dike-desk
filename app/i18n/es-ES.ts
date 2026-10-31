@@ -84,6 +84,8 @@ const messages = {
   brief: {
     backToList: "Escritos",
     notFound: "Escrito no encontrado.",
+    loadFailed: "No se pudo cargar este escrito.",
+    retry: "Reintentar",
     backToBriefs: "Volver a escritos",
     editSave: "Guardar",
     editCancel: "Cancelar",
@@ -144,6 +146,8 @@ const messages = {
     createButton: "Crear escrito",
     loadDemo: "Cargar demo sintético",
     createFailed: "No se pudo crear el escrito.",
+    loadFailed: "No se pudieron cargar los escritos.",
+    retry: "Reintentar",
     empty: "Aún no hay escritos.",
   },
   commitment: {

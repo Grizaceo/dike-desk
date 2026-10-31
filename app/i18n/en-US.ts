@@ -83,6 +83,8 @@ const messages = {
   brief: {
     backToList: "Briefs",
     notFound: "Brief not found.",
+    loadFailed: "Could not load this brief.",
+    retry: "Retry",
     backToBriefs: "Back to briefs",
     editSave: "Save",
     editCancel: "Cancel",
@@ -143,6 +145,8 @@ const messages = {
     createButton: "Create brief",
     loadDemo: "Load synthetic demo",
     createFailed: "Could not create the brief.",
+    loadFailed: "Could not load briefs.",
+    retry: "Retry",
     empty: "No briefs yet.",
   },
   commitment: {

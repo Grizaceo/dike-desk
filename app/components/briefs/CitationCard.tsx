@@ -210,6 +210,15 @@ export default function CitationCard({
         ),
       )}
 
+      {decide.isError ? (
+        <p
+          role="alert"
+          className="text-xs font-medium text-red-700 dark:text-red-300"
+        >
+          {actionErrorMessage(decide.error) ?? t("brief.decideFailed")}
+        </p>
+      ) : null}
+
       <form onSubmit={askAgent} className="flex gap-2">
         <input
           value={comment}

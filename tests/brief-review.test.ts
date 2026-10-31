@@ -14,6 +14,7 @@ import {
   bodySegments,
   getActivityItems,
   getCitationItems,
+  isMissingBriefError,
   safeExternalUrl,
 } from "../app/lib/brief-review.js";
 import type { Citation, ReviewItem } from "../app/lib/brief-types.js";
@@ -309,6 +310,24 @@ describe("bodySegments", () => {
       segments: [{ text: "(" }, { text: raw, citation: mark }, { text: ")." }],
       unlocated: [],
     });
+  });
+});
+
+describe("isMissingBriefError", () => {
+  it("treats not_found and 404 as a missing brief", () => {
+    expect(isMissingBriefError({ errorCode: "not_found", status: 404 })).toBe(
+      true,
+    );
+    expect(isMissingBriefError({ status: 404 })).toBe(true);
+  });
+
+  it("keeps network and permission failures distinct", () => {
+    expect(isMissingBriefError(new Error("Failed to fetch"))).toBe(false);
+    expect(
+      isMissingBriefError({ status: 401, errorCode: "unauthorized" }),
+    ).toBe(false);
+    expect(isMissingBriefError({ status: 403 })).toBe(false);
+    expect(isMissingBriefError(null)).toBe(false);
   });
 });
 

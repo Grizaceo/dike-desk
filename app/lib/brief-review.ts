@@ -105,6 +105,13 @@ export function bodySegments(body: string, citations: Citation[]) {
   return { segments, unlocated };
 }
 
+/** A missing brief is 404 / `not_found`. Network and permission failures are not. */
+export function isMissingBriefError(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const record = error as { errorCode?: unknown; status?: unknown };
+  return record.errorCode === "not_found" || record.status === 404;
+}
+
 export function safeExternalUrl(url: string | null) {
   if (!url) return null;
   try {
