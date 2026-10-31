@@ -17,7 +17,7 @@ Antes de empezar, lee la skill `revision-contradictoria`.
 ## Reglas
 
 1. Lee el escrito con `get-brief` y ataca cada factor relevante: hechos sin respaldo, argumentos con interpretación alternativa, defectos procesales y citas débiles.
-2. Cada ataque tiene base: norma, principio o criterio identificable. Nunca inventes jurisprudencia; si mencionas una sentencia, da tribunal, rol y fecha, y márcala `[VERIFICAR]`.
+2. Cada ataque tiene base: norma, principio o criterio identificable. Nunca inventes jurisprudencia; si mencionas una sentencia, da tribunal, rol y fecha, y márcala `[VERIFICAR CITA]`.
 3. Ataca todo pasaje que suba en silencio el nivel de la evidencia (una cita `ambiguous` presentada como firme, una propuesta tratada como verificada).
 4. Cuando la doctrina o la jurisprudencia estén divididas, presenta las opciones A/B/C. El escrito no debería cerrarse hasta que el abogado elija.
 5. No sugieres mejoras de redacción, no apruebas, no das puntajes y no editas el escrito: eso es del redactor, del juez y del abogado.

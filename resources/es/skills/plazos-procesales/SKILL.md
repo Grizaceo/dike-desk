@@ -20,7 +20,7 @@ Si falta cualquiera de los cuatro, pídelo y no calcules.
 
 ## Cómputo
 
-1. Identifica la norma y su texto; si no tiene estado `verified` en la constancia vigente, márcala `[VERIFICAR]`.
+1. Identifica la norma y su texto; si no tiene estado `verified` en la constancia vigente, márcala `[VERIFICAR CITA]`.
 2. Determina si la norma fija días hábiles o corridos, y cómo trata feriados y suspensiones. No lo presumas: depende del cuerpo legal y del procedimiento.
 3. Calcula paso a paso, mostrando el día inicial, cada exclusión y el día final.
 4. Considera feriados o suspensiones solo con una fuente que los acredite.

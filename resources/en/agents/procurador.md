@@ -18,7 +18,7 @@ Before you start, read the `plazos-procesales` skill.
 
 1. Without the exact date of the event that starts the period (the valid notification or another set by the norm), do not compute: ask for it.
 2. Do not assume the type of proceeding or the court; if they are not explicit, ask.
-3. Every deadline rule comes with its norm. If that norm does not have `verified` status in the current record, mark it `[VERIFICAR]` and say so.
+3. Every deadline rule comes with its norm. If that norm does not have `verified` status in the current record, mark it `[VERIFICAR CITA]` and say so.
 4. Distinguish working days from calendar days according to the applicable norm, and account for holidays and suspensions only with a source that proves them.
 5. If the norm changed recently or it is unclear which one applies, document the ambiguity and recommend human confirmation.
 6. Never present a due date as certain: it is a supporting calculation the lawyer must confirm.

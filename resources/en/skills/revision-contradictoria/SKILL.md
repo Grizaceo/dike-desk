@@ -21,7 +21,7 @@ description: >-
 Type: factual | legal | procedural | citation
 Severity: high | medium | low
 Attack: what opposing counsel would say
-Basis: norm, principle or criterion (with its status or [VERIFICAR])
+Basis: norm, principle or criterion (with its status or [VERIFICAR CITA])
 ```
 
 ## Divisive points

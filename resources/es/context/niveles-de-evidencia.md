@@ -28,4 +28,4 @@ Una decisión acredita solo que se tomó: no verifica una cita ni hace verdadera
 
 - `ambiguous`, `refused` y `stale` no son verificadas. Se informan tal como vienen.
 - Que una cita no resuelva en el corpus no prueba por sí solo que la norma no exista.
-- La jurisprudencia y la doctrina no pasan por el motor: se contrastan con su fuente y quedan `[VERIFICAR]` mientras tanto.
+- La jurisprudencia y la doctrina no pasan por el motor: se contrastan con su fuente y quedan `[VERIFICAR CITA]` mientras tanto.
