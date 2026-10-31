@@ -4,6 +4,7 @@ import { asc, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb, schema } from "../server/db/index.js";
+import { briefSha256 } from "../server/lib/brief-hash.js";
 import { requireBrief } from "../server/lib/briefs.js";
 
 export default defineAction({
@@ -24,6 +25,15 @@ export default defineAction({
   }),
   run: async ({ briefId }) => {
     const brief = await requireBrief(briefId);
+    const storedCommitment = brief.commitmentJson
+      ? (JSON.parse(brief.commitmentJson) as {
+          commitment: unknown;
+          signature: unknown;
+          pubkey: string | null;
+          certificate?: { escrito?: { sha256?: unknown } } | null;
+        })
+      : null;
+    const escritoSha = storedCommitment?.certificate?.escrito?.sha256;
     const { citations, reviewItems } = schema;
     const [citationRows, reviewRows] = await Promise.all([
       getDb()
@@ -35,6 +45,8 @@ export default defineAction({
           end: citations.end,
           status: citations.status,
           resolution: citations.resolution,
+          vigencia: citations.vigencia,
+          historicalTextState: citations.historicalTextState,
           label: citations.label,
           textSha256: citations.textSha256,
           sourceUrl: citations.sourceUrl,
@@ -70,13 +82,11 @@ export default defineAction({
         verdict: brief.verdict,
         meta: brief.verificationMeta ? JSON.parse(brief.verificationMeta) : null,
         hasCommitment: Boolean(brief.commitmentJson),
-        commitment: brief.commitmentJson
-          ? (JSON.parse(brief.commitmentJson) as {
-              commitment: unknown;
-              signature: unknown;
-              pubkey: string | null;
-            })
-          : null,
+        commitment: storedCommitment,
+        certificateCheck:
+          typeof escritoSha === "string"
+            ? { textMatches: briefSha256(brief.body) === escritoSha }
+            : null,
         updatedAt: brief.updatedAt,
       },
       citations: citationRows,

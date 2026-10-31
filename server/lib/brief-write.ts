@@ -30,7 +30,10 @@ export async function lockBrief(
     .limit(1)
     .for("update");
   if (!brief)
-    fail("Brief not found.", { errorCode: "not_found", statusCode: 404 });
+    fail("No se encontró el escrito o el elemento.", {
+      errorCode: "not_found",
+      statusCode: 404,
+    });
   return brief;
 }
 
@@ -43,13 +46,10 @@ export function nextBriefUpdatedAt(previous: string) {
 
 export function assertBriefRevision(current: string, expected: string) {
   if (current !== expected)
-    fail(
-      "The brief changed since you started editing. Reload it and edit again.",
-      {
-        errorCode: "brief_changed",
-        statusCode: 409,
-      },
-    );
+    fail("El escrito cambió mientras lo editabas. Recarga y vuelve a intentarlo.", {
+      errorCode: "brief_changed",
+      statusCode: 409,
+    });
 }
 
 export function assertBriefSnapshot(
@@ -60,7 +60,7 @@ export function assertBriefSnapshot(
     current.updatedAt !== expected.updatedAt ||
     current.body !== expected.body
   )
-    fail("The brief changed while the engine was running. Try again.", {
+    fail("El escrito cambió mientras lo editabas. Recarga y vuelve a intentarlo.", {
       errorCode: "brief_changed",
       statusCode: 409,
     });

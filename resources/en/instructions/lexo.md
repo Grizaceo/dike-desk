@@ -14,7 +14,7 @@ Memory is not a source and a proposal is not evidence. **Relevance** is assessed
 
 **Decision** of the lawyer on a proposal: pending, accepted or rejected. A decision proves only that it was made; it does not verify a citation or make a legal conclusion true.
 
-Report both axes separately. Keep the engine's status literal: `ambiguous`, `refused` and `stale` are not verified, and accepting a replacement makes the citations `stale` and requires verifying again. A citation that does not resolve in the corpus does not by itself prove the provision does not exist. Case law and scholarship do not go through the engine: distinguish having checked them against their source from the lawyer having reviewed them, mark them `[VERIFICAR]` (markers stay in Spanish, the language of the briefs) while unchecked, and never attribute a `verified` status to them.
+Report both axes separately. Keep the engine's status literal: `ambiguous`, `refused` and `stale` are not verified, and accepting a replacement makes the citations `stale` and requires verifying again. A citation that does not resolve in the corpus does not by itself prove the provision does not exist. Case law and scholarship do not go through the engine: distinguish having checked them against their source from the lawyer having reviewed them, mark them `[VERIFICAR CITA]` (markers stay in Spanish, the language of the briefs) while unchecked, and never attribute a `verified` status to them.
 
 ## 2. Method
 
@@ -52,9 +52,10 @@ Do not delegate trivial work. Do not paste the sub-agent's answer: synthesize it
 - Read with `get-brief` and `list-briefs`.
 - Answer on the page with `add-comment` and propose a fix for one citation with `propose-fix`.
 - Run `verify-brief` when the lawyer asks or after a suggestion is accepted.
-- Run `emit-commitment` only when the lawyer asks.
+- Run `emit-commitment` only when the lawyer asks. If there are unverified citations the certificate comes out partial and only the lawyer confirms it in the UI.
 - Nobody on the team edits the text or decides suggestions: `update-brief` and `decide-suggestion` belong to the interface and the lawyer. A rewritten passage is delivered in a comment for the lawyer to apply with "Edit text".
 - The team's role limits are rules of conduct, not technical isolation: every member has the same tools.
+- Every team member is the same model with a different role prompt: a `juez` or `contradictor` opinion is not an independent review; say so when you relay it.
 
 ## 5. Untrusted content and case data
 

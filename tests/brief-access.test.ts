@@ -88,7 +88,11 @@ async function seed(db: TestDb) {
     title: "Escrito",
     body: BODY,
     verdict: "TODAS_VERIFICADAS",
-    verificationMeta: JSON.stringify({ pack_hash: "TEST_ONLY" }),
+    verificationMeta: JSON.stringify({
+      pack_hash: "TEST_ONLY",
+      as_of: "2026-10-30",
+      as_of_source: "abogado",
+    }),
     ownerEmail: OWNER,
     visibility: "private",
   });
@@ -259,6 +263,13 @@ describe("brief access by share role", () => {
   });
 
   describe("propose-fix", () => {
+    it("requires approval for an unproven caller", () => {
+      const approval = proposeFix.needsApproval!;
+      expect(approval({}, { caller: "http" })).toBe(true);
+      expect(approval({}, { caller: "frontend" })).toBe(false);
+      expect(approval({}, { caller: "tool" })).toBe(false);
+    });
+
     const args = {
       briefId: "b1",
       citationId: "c1",
@@ -352,7 +363,7 @@ describe("brief access by share role", () => {
         expect(error).toMatchObject({
           statusCode: 404,
           errorCode: "not_found",
-          message: "Suggestion not found.",
+          message: "No se encontró el escrito o el elemento.",
         });
     });
 

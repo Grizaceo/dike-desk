@@ -56,7 +56,17 @@ export function VerdictBadge({ verdict }: { verdict: string | null }) {
         {t("verdict.notVerified")}
       </span>
     );
-  if (verdict === "TODAS_VERIFICADAS") return <StatusBadge status="verified" />;
+  if (verdict === "TODAS_VERIFICADAS")
+    return (
+      <span
+        className={cn(
+          "rounded-full px-2 py-0.5 text-xs font-medium",
+          STATUS_STYLES.verified.badge,
+        )}
+      >
+        {t("verdict.allVerified")}
+      </span>
+    );
   const label =
     verdict === "SIN_CITAS"
       ? t("verdict.noCitations")

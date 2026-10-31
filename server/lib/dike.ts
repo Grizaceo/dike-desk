@@ -35,6 +35,8 @@ const detailSchema = z.object({
   cuerpo: z.string().nullish(),
   texto_hash: z.string().nullish(),
   vigencia: z.string().nullish(),
+  vigencia_legible: z.string().nullish(),
+  estado_texto_historico: z.string().nullish(),
   fuente_url: z.string().nullish(),
   fecha_recuperacion: z.string().nullish(),
 });
@@ -127,7 +129,7 @@ function localEngineEnv() {
 }
 
 function badOutput(): never {
-  return fail("Diké engine returned unsafe or malformed output.", {
+  return fail("El motor Diké devolvió una salida no válida.", {
     errorCode: "dike_bad_output",
     statusCode: 502,
   });
@@ -159,7 +161,7 @@ function dockerUser(): Promise<string> {
       !options.every((o) => typeof o === "string")
     ) {
       dockerUserCache = null;
-      fail("Could not determine the Docker security mode.", {
+      fail("No se pudo usar Docker para ejecutar el motor Diké.", {
         errorCode: "dike_docker_unavailable",
         statusCode: 503,
       });
@@ -176,20 +178,31 @@ function dockerUser(): Promise<string> {
 /** Run `dike constancia` on a brief body; optionally emit the commitment. */
 export async function runConstancia(
   body: string,
-  opts: { emitCommitment?: boolean } = {},
+  opts: { emitCommitment?: boolean; asOf?: string | undefined } = {},
 ): Promise<DikeRun> {
   if (Buffer.byteLength(body, "utf8") > MAX_BODY_BYTES) {
-    fail("The brief is larger than the 400 KB the verifier accepts.", {
+    fail("El escrito supera los 400 KB que acepta el verificador.", {
       errorCode: "brief_too_large",
     });
+  }
+  // Defense in depth: callers validate the date through parseAsOf (real
+  // calendar day, not in the future); here we only bound what reaches argv.
+  if (
+    opts.asOf !== undefined &&
+    !/^\d{4}-\d{2}-\d{2}$/.test(opts.asOf)
+  ) {
+    fail(
+      "La fecha de referencia debe ser una fecha válida (AAAA-MM-DD) que no sea posterior a hoy.",
+      { errorCode: "invalid_as_of", statusCode: 400 },
+    );
   }
   const image = process.env.DIKE_DOCKER_IMAGE?.trim(); // guard:allow-env-credential — operator deploy config (engine image name), not a user credential
   const bin = process.env.DIKE_BIN?.trim(); // guard:allow-env-credential — operator deploy config (engine binary path), not a user credential
   if (!image && !bin) {
-    fail(
-      "Diké engine is not configured. Set DIKE_DOCKER_IMAGE (docker build -t dike . in the dike repo) or DIKE_BIN.",
-      { errorCode: "dike_unavailable", statusCode: 503 },
-    );
+    fail("El motor Diké no está configurado en esta instalación.", {
+      errorCode: "dike_unavailable",
+      statusCode: 503,
+    });
   }
 
   const docker = Boolean(image);
@@ -207,6 +220,9 @@ export async function runConstancia(
     }
     const root = docker ? "/work" : work;
     const args = ["constancia", `${root}/brief.md`, "--json"];
+    if (opts.asOf !== undefined) {
+      args.push("--as-of", opts.asOf);
+    }
     if (opts.emitCommitment) {
       args.push("--emit-commitment", `${root}/out`);
       // Signing only happens when the operator configured a content key for a
@@ -242,7 +258,7 @@ export async function runConstancia(
     // 0 = all verified, 1 = some were not. Anything else is an engine failure.
     // The engine's stderr can echo brief text or paths: it is never surfaced.
     if (code !== 0 && code !== 1) {
-      fail(`Diké engine failed (exit ${code}).`, {
+      fail("El motor Diké falló. Inténtalo de nuevo.", {
         errorCode: "dike_failed",
         statusCode: 502,
       });
@@ -270,6 +286,10 @@ export async function runConstancia(
       ...value,
       meta: { ...value.meta, ...counters },
     };
+    // When we asked for a reference date the engine must answer with exactly
+    // that date: a silent fallback to "today" would mislabel the whole run.
+    if (opts.asOf !== undefined && result.meta.as_of !== opts.asOf)
+      return badOutput();
 
     let commitment: unknown = null;
     let signature: unknown = null;

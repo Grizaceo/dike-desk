@@ -8,6 +8,7 @@ import { lockBrief } from "../server/lib/brief-write.js";
 import { commentAuthor, requireUser } from "../server/lib/briefs.js";
 
 export default defineAction({
+  needsApproval: (_args, ctx) => ctx?.caller === "http",
   description:
     "Propose replacing one citation's exact text (e.g. 'artículo 60' -> 'artículo 60 del Código del Trabajo', or withdrawing it). Creates a pending suggestion the lawyer accepts or rejects in the UI; it does not change the brief. After acceptance, run verify-brief: a proposal is never evidence that the new citation exists.",
   schema: z.object({
@@ -44,12 +45,12 @@ export default defineAction({
         )
         .limit(1);
       if (!citation)
-        fail("Citation not found in this brief.", {
+        fail("No se encontró el escrito o el elemento.", {
           errorCode: "not_found",
           statusCode: 404,
         });
       if (citation.status === "stale")
-        fail("The brief changed since verification. Run verify-brief first.", {
+        fail("El escrito cambió bajo esta sugerencia. Verifica de nuevo.", {
           errorCode: "stale_citation",
           statusCode: 409,
         });

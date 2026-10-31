@@ -9,7 +9,7 @@ Memory helps the work; it never grounds a conclusion. Never cite memory or learn
 | Shared HOT | `LEARNINGS.md` (shared) | A short index of the firm's conventions, method decisions and corrections. At most 150 lines, one line per entry. | Every turn |
 | Personal HOT | `memory/MEMORY.md` (personal) | The lawyer's preferences: tone, format, usual areas, citation style. | Every turn |
 | WARM | `context/*.md` (shared) | Longer reference topics: evidence and decision, source hierarchy, methodology foundations. | When the task needs them |
-| COLD | The brief, its ledger and its commitment | Case facts, comments, proposals, decisions and records. | Through `get-brief`, only for that brief |
+| COLD | The brief, its ledger and its certificate | Case facts, comments, proposals, decisions and records. | Through `get-brief`, only for that brief |
 
 ## What to keep and where
 

@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 // Diké Desk end-to-end demo driver.
 //
-// Runs the full agent loop in ONE browser page (client-side navigation only,
-// like a normal session): load the synthetic demo brief, verify with Diké,
-// comment on «artículo 60», wait for the agent's suggestion, accept it in the
-// UI, wait for the re-verify, comment on «artículo 9999», emit the signed
-// commitment, download the three artifacts and optionally verify them with
-// the third-party verifier.
+// Runs the demo guion in ONE browser page (client-side navigation only, like
+// a normal session): load the synthetic demo, verify at the lawyer-chosen
+// reference date 2026-09-15, comment on «artículo 60» so the agent checks
+// pertinence and proposes a withdrawal (accepted in the UI, re-verified),
+// fix the art. 168 paraphrase with «Editar texto» and verify again, comment
+// on «artículo 640 del Código del Trabajo», then issue the partial
+// certificate (lawyer-only confirmation) and check the fingerprint with
+// verifier/verificar_certificado.py. With --verifier, a sealed run is also
+// checked with the engine's independent verifier.
 //
 // Usage:
 //   node scripts/demo-e2e.mjs --out <new dir> [--base http://localhost:8080]
@@ -335,13 +338,13 @@ page.on("pageerror", (e) => {
   log("[pageerror]", t);
 });
 
-const threads = { comment60: null, accept: null, comment9999: null };
+const threads = { comment60: null, accept: null, comment640: null };
 let aborted = false;
 
 try {
-  // --- step 1: /briefs, load synthetic demo (single client-side navigation) ---
+  // --- step 1: load the demo, set the reference date, verify ---
   await page.goto(`${BASE}/briefs`, { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: /synthetic demo/i }).click();
+  await page.getByRole("button", { name: /synthetic demo|demo sint/i }).click();
   await page.waitForURL(/\/briefs\/[^/]+$/, { timeout: 15_000 });
   const briefId = page.url().split("/briefs/")[1];
   summary.briefId = briefId;
@@ -351,14 +354,15 @@ try {
   hard("demoBriefLoaded", Boolean(briefId), briefId);
   if (!briefId) throw new Error("no brief id after demo load");
 
-  // --- step 2: verify with Diké, expect 4/6 ---
+  await page.locator("#brief-as-of").fill("2026-09-15");
   await page
-    .getByRole("button", { name: "Verify with Diké", exact: true })
+    .getByRole("button", { name: /Verify with Diké|Verificar con Diké/ })
+    .first()
     .click();
   const afterVerify = await pollBrief(
     briefId,
     (b) => b.brief.meta && b.brief.meta.total_citas > 0,
-    180_000,
+    240_000,
   );
   if (
     !hard(
@@ -380,6 +384,11 @@ try {
     meta0.citas_verificadas === 4 && meta0.total_citas === 6,
     `${meta0.citas_verificadas}/${meta0.total_citas} pack ${meta0.pack_hash} as_of ${meta0.as_of}`,
   );
+  hard(
+    "asOfIsChosen",
+    meta0.as_of === "2026-09-15" && meta0.as_of_source === "abogado",
+    `as_of ${meta0.as_of} source ${meta0.as_of_source}`,
+  );
   await writeArtifact(OUT, "get-brief-after-verify.json", afterVerify);
   await shot(page, "03-after-verify");
   await dump(page, "03-after-verify");
@@ -387,325 +396,403 @@ try {
   const findCit = (body, needle) =>
     (body.citations ?? []).find((c) => c.raw.includes(needle));
   const cit60 = findCit(afterVerify, "artículo 60");
-  const cit9999 = findCit(afterVerify, "artículo 9999");
+  const cit640 = findCit(afterVerify, "artículo 640");
   hard("foundArt60", Boolean(cit60), cit60?.raw);
-  hard("foundArt9999", Boolean(cit9999), cit9999?.raw);
-  if (!cit60 || !cit9999) throw new Error("expected citations not found");
-
-  summary.art60 = { rawBefore: cit60.raw };
-  summary.rawsWithTrailingWords = (afterVerify.citations ?? [])
-    .map((c) => c.raw)
-    .filter((raw) => trailingWords(raw).length > 0);
+  hard(
+    "art60Ambiguous",
+    cit60?.status === "ambiguous",
+    `${cit60?.raw} -> ${cit60?.status} (${cit60?.resolution})`,
+  );
+  hard("foundArt640", Boolean(cit640), cit640?.raw);
+  hard(
+    "art640Refused",
+    cit640?.status === "refused",
+    `${cit640?.raw} -> ${cit640?.status} (${cit640?.resolution})`,
+  );
+  if (!cit60 || !cit640) throw new Error("expected citations not found");
 
   const cardByRaw = (raw) =>
     page
       .locator("aside article")
       .filter({ has: page.locator("strong").filter({ hasText: raw }) });
 
-  // --- step 3: comment on «artículo 60», expect a pending suggestion ---
+  // --- step 2: comment on «artículo 60»; the agent checks pertinence ---
   const card60 = cardByRaw("artículo 60");
-  await card60.locator("input").fill("esto es el Código del Trabajo");
-  const t1 = new Date();
-  await card60.getByRole("button", { name: "Send to agent" }).click();
-  const turn1 = await waitForTurn(
+  await card60
+    .locator("input")
+    .fill(
+      "esto es el Código del Trabajo. Antes de corregirla, pide al contradictor que revise si el artículo sostiene la frase.",
+    );
+  const turn60StartedAt = new Date();
+  await card60
+    .getByRole("button", { name: /Send to agent|Enviar al agente/ })
+    .click();
+  const turn60 = await waitForTurn(
     "esto es el Código del Trabajo",
     runStartedAt,
-    t1,
+    turn60StartedAt,
   );
-  if (
-    !hard(
-      "comment60TurnConfirmed",
-      isConfirmedTurn(turn1),
-      "current-run marker required",
-    )
-  )
-    throw new Error("comment60 turn was not confirmed");
-  threads.comment60 = turn1.threadId;
-  log("comment60 turn:", JSON.stringify(turn1));
-  const afterComment = await pollBrief(
+  hard("comment60TurnConfirmed", turn60.markerConfirmed);
+  threads.comment60 = turn60.threadId;
+  log("comment60 turn:", JSON.stringify(turn60));
+  await shot(page, "04-comment-60");
+  await dump(page, "04-comment-60");
+
+  const after60 = await pollBrief(
     briefId,
     (b) =>
       (b.review ?? []).some(
-        (r) =>
-          r.kind === "suggestion" &&
-          r.citationId === cit60.id &&
-          r.state === "pending",
+        (r) => r.citationId === cit60.id && r.author === "agent",
       ),
-    90_000,
+    120_000,
   );
+  const reply60 = (after60?.review ?? [])
+    .filter((r) => r.citationId === cit60.id && r.author === "agent")
+    .at(-1)?.body;
   hard(
-    "pendingSuggestionOnArt60",
-    Boolean(afterComment),
-    turn1.threadId ? "thread confirmed" : "no confirmed thread",
+    "art60AgentReply",
+    Boolean(reply60),
+    reply60 ? scrub(reply60).slice(0, 200) : "no agent reply on the citation",
   );
-  if (!afterComment) throw new Error("no pending suggestion on artículo 60");
-  const sugg60 = (afterComment.review ?? []).find(
+  if (reply60) {
+    soft("reply60CitesContent", /fallec/i.test(reply60));
+    soft(
+      "reply60Pertinence",
+      /no sostiene|no respalda|no es pertinente|impertinen/i.test(reply60),
+    );
+  }
+  const sugg60 = (after60?.review ?? []).find(
     (r) =>
       r.kind === "suggestion" &&
       r.citationId === cit60.id &&
       r.state === "pending",
   );
-  summary.art60.suggestionReplacement = sugg60?.replacement ?? null;
-  await writeArtifact(OUT, "get-brief-after-comment60.json", afterComment);
-  await shot(page, "05-pending-suggestion");
-  await dump(page, "05-pending-suggestion");
+  summary.art60 = {
+    suggestionReplacement: sugg60?.replacement ?? null,
+  };
+  const isWithdrawal = sugg60 && sugg60.replacement === "";
 
-  // --- step 4: accept in the UI; the page auto-sends the re-verify message ---
-  const t2 = new Date();
-  await card60.getByRole("button", { name: "Accept" }).click();
-  const turn2 = await waitForTurn("accepted the suggestion", runStartedAt, t2);
-  if (
-    !hard(
-      "acceptTurnConfirmed",
-      isConfirmedTurn(turn2),
-      "current-run marker required",
-    )
-  )
-    throw new Error("accept turn was not confirmed");
-  threads.accept = turn2.threadId;
-  log("accept turn:", JSON.stringify(turn2));
-  const afterAccept = await pollBrief(
+  if (isWithdrawal) {
+    const acceptStartedAt = new Date();
+    await card60
+      .getByRole("button", { name: /^Accept$|^Aceptar$/ })
+      .click();
+    const afterAccept = await pollBrief(
+      briefId,
+      (b) =>
+        (b.review ?? []).some(
+          (r) => r.id === sugg60.id && r.state === "accepted",
+        ),
+      120_000,
+    );
+    hard(
+      "withdrawalAccepted",
+      Boolean(afterAccept),
+      afterAccept ? "suggestion accepted" : "suggestion stayed pending",
+    );
+    const acceptTurn = await waitForTurn(
+      "accepted",
+      runStartedAt,
+      acceptStartedAt,
+      240_000,
+    );
+    log("accept turn:", JSON.stringify(acceptTurn));
+    threads.accept = acceptTurn.threadId;
+    const afterReverify = await pollBrief(
+      briefId,
+      (b) =>
+        b.brief.meta &&
+        !(b.citations ?? []).some((c) => c.status === "stale"),
+      300_000,
+    );
+    const finalCits = afterReverify?.citations ?? [];
+    hard(
+      "art60Withdrawn",
+      Boolean(afterReverify) &&
+        !finalCits.some((c) => c.raw.includes("artículo 60")) &&
+        finalCits.length === 5 &&
+        (afterReverify?.brief.meta?.citas_verificadas ?? 0) === 4,
+      `${finalCits.length} citations, ${afterReverify?.brief.meta?.citas_verificadas} verified`,
+    );
+  } else {
+    soft(
+      "art60NotWithdrawal",
+      true,
+      sugg60
+        ? `pending suggestion replacement: ${JSON.stringify(sugg60.replacement)}`
+        : "no pending suggestion",
+    );
+    if (sugg60) {
+      await card60
+        .getByRole("button", { name: /^Reject$|^Rechazar$/ })
+        .click();
+      const afterReject = await pollBrief(
+        briefId,
+        (b) =>
+          (b.review ?? []).some(
+            (r) => r.id === sugg60.id && r.state === "rejected",
+          ),
+        60_000,
+      );
+      soft("art60SuggestionRejected", Boolean(afterReject));
+    }
+  }
+
+  // --- step 3: paraphrase (no model): fix «treinta» -> «sesenta» by hand ---
+  const warnCount = await cardByRaw("artículo 168")
+    .locator("text=/paráfrasis|paraphrase/i")
+    .count();
+  soft(
+    "art168WarningShown",
+    warnCount > 0,
+    "art. 168 card shows the paraphrase warning",
+  );
+  await page
+    .getByRole("button", { name: /Edit text|Editar texto/ })
+    .click();
+  const editor = page.locator("textarea#brief-edit-body");
+  const draft = await editor.inputValue();
+  hard(
+    "draftHasTreinta",
+    draft.includes("treinta días hábiles"),
+    "SEXTO paraphrase present",
+  );
+  await editor.fill(
+    draft.replace("treinta días hábiles", "sesenta días hábiles"),
+  );
+  await page.getByRole("button", { name: /^Save$|^Guardar$/ }).click();
+  await pollBrief(
+    briefId,
+    (b) => b.brief.body.includes("sesenta días hábiles"),
+    60_000,
+  );
+  await page
+    .getByRole("button", { name: /Verify with Diké|Verificar con Diké/ })
+    .first()
+    .click();
+  const afterEdit = await pollBrief(
     briefId,
     (b) =>
-      b.brief.meta?.citas_verificadas === 5 &&
-      (b.citations ?? []).some(
-        (c) => c.raw.includes("artículo 60") && c.status === "verified",
+      b.brief.meta &&
+      b.brief.body.includes("sesenta días hábiles") &&
+      !(b.citations ?? []).some((c) => c.status === "stale"),
+    300_000,
+  );
+  const cit168 = findCit(afterEdit ?? {}, "artículo 168");
+  hard(
+    "art168StillVerified",
+    cit168?.status === "verified",
+    `${cit168?.raw} -> ${cit168?.status}`,
+  );
+  hard(
+    "bodyHasSesenta",
+    (afterEdit?.brief.body ?? "").includes(
+      "sesenta días hábiles contado desde la separación",
+    ),
+    "paraphrase fixed in the stored text",
+  );
+  hard(
+    "asOfKept",
+    afterEdit?.brief.meta?.as_of === "2026-09-15",
+    `as_of ${afterEdit?.brief.meta?.as_of}`,
+  );
+  await writeArtifact(OUT, "get-brief-after-paraphrase.json", afterEdit);
+  await shot(page, "05-after-paraphrase");
+  await dump(page, "05-after-paraphrase");
+
+  // --- step 4: comment on «artículo 640»; the reply must stay prudent ---
+  const card640 = cardByRaw("artículo 640");
+  await card640.locator("input").fill("¿qué hacemos con esta cita?");
+  const turn640StartedAt = new Date();
+  await card640
+    .getByRole("button", { name: /Send to agent|Enviar al agente/ })
+    .click();
+  const turn640 = await waitForTurn(
+    "¿qué hacemos con esta cita?",
+    runStartedAt,
+    turn640StartedAt,
+  );
+  hard("comment640TurnConfirmed", turn640.markerConfirmed);
+  threads.comment640 = turn640.threadId;
+  const after640 = await pollBrief(
+    briefId,
+    (b) =>
+      (b.review ?? []).some(
+        (r) => r.citationId === cit640.id && r.author === "agent",
       ),
     120_000,
   );
-  hard(
-    "verifiedAfterIs5of6AndArt60Verified",
-    Boolean(afterAccept),
-    afterAccept
-      ? `${afterAccept.brief.meta.citas_verificadas}/${afterAccept.brief.meta.total_citas}`
-      : "expected 5/6 with artículo 60 verified",
-  );
-  if (!afterAccept) throw new Error("re-verify after accept did not reach 5/6");
-  const cit60After = findCit(afterAccept, "artículo 60");
-  summary.art60.rawAfter = cit60After?.raw ?? null;
-  summary.verifiedAfter = {
-    verified: afterAccept.brief.meta.citas_verificadas,
-    total: afterAccept.brief.meta.total_citas,
-  };
-  await writeArtifact(OUT, "get-brief-after-accept.json", afterAccept);
-  await shot(page, "06-after-accept");
-  await dump(page, "06-after-accept");
-
-  // keepsTrailingWords: if the raw ended with lowercase trailing words, the
-  // accepted replacement must end with the same last word.
-  {
-    const suffix = trailingWords(summary.art60.rawBefore);
-    const last = summary.art60.rawBefore.trim().split(/\s+/).pop();
-    const repl = summary.art60.suggestionReplacement ?? "";
-    const applicable = suffix.length > 0;
-    const ok = !applicable || repl.trim().split(/\s+/).pop() === last;
-    summary.art60.trailingSuffix = suffix;
-    summary.keepsTrailingWords = { applicable, ok, rawLastWord: last };
+  const reply640 = (after640?.review ?? [])
+    .filter((r) => r.citationId === cit640.id && r.author === "agent")
+    .at(-1)?.body;
+  if (reply640) {
     soft(
-      "keepsTrailingWords",
-      ok,
-      applicable
-        ? `raw «…${last}» -> replacement «${repl}»`
-        : `raw «${summary.art60.rawBefore}» has no trailing words (vacuous); replacement «${repl}»`,
+      "reply640Prudent",
+      !/no existe/i.test(reply640) || /no prueba/i.test(reply640),
+      scrub(reply640).slice(0, 200),
     );
+  } else {
+    soft("reply640Prudent", false, "no agent reply on «artículo 640»");
   }
+  await shot(page, "06-comment-640");
+  await dump(page, "06-comment-640");
 
-  // --- step 5: comment on «artículo 9999» ---
-  const card9999 = cardByRaw("artículo 9999");
-  await card9999.locator("input").fill("¿qué hacemos con esta cita?");
-  const t3 = new Date();
-  await card9999.getByRole("button", { name: "Send to agent" }).click();
-  const turn3 = await waitForTurn(
-    "qué hacemos con esta cita",
-    runStartedAt,
-    t3,
-  );
-  if (
-    !hard(
-      "comment9999TurnConfirmed",
-      isConfirmedTurn(turn3),
-      "current-run marker required",
-    )
-  )
-    throw new Error("comment9999 turn was not confirmed");
-  threads.comment9999 = turn3.threadId;
-  log("comment9999 turn:", JSON.stringify(turn3));
-  await shot(page, "07-comment-9999");
-  await dump(page, "07-comment-9999");
-  const after9999 = await getBrief(briefId);
-  await writeArtifact(
-    OUT,
-    "get-brief-after-9999.json",
-    after9999.body ?? after9999,
-  );
-  const body9999 = after9999.body;
-  const cit9999After = findCit(body9999, "artículo 9999");
-  const agentReplies = (body9999.review ?? []).filter(
-    (r) =>
-      r.kind === "comment" &&
-      r.author === "agent" &&
-      r.citationId === cit9999After?.id,
-  );
-  summary.reply9999 = agentReplies.at(-1)?.body ?? null;
-  summary.agentComments9999 = agentReplies.map((r) => r.body);
-  soft(
-    "agentRepliedOn9999",
-    Boolean(summary.reply9999),
-    summary.reply9999 ? scrub(summary.reply9999).slice(0, 200) : undefined,
-  );
-  summary.suggestions = (body9999.review ?? [])
-    .filter((r) => r.kind === "suggestion")
-    .map((r) => ({
-      citationId: r.citationId,
-      citationRaw:
-        (body9999.citations ?? []).find((c) => c.id === r.citationId)?.raw ??
-        null,
-      replacement: r.replacement,
-      state: r.state,
-      body: scrub(r.body).slice(0, 200),
-    }));
-
-  // --- step 6: emit commitment, download the three artifacts ---
+  // --- step 5: partial certificate (lawyer-only confirmation) ---
   await page
-    .getByRole("button", { name: "Emit commitment", exact: true })
+    .getByRole("button", {
+      name: /Issue verification certificate|Emitir certificado de verificación/,
+    })
     .click();
-  const withCommitment = await pollBrief(
+  const dialog = page.locator('[role="alertdialog"], [role="dialog"]');
+  hard(
+    "partialDialogShown",
+    (await dialog.count()) > 0,
+    "the partial-emission confirmation appeared",
+  );
+  await shot(page, "07-partial-dialog");
+  await page
+    .getByRole("button", {
+      name: /Issue partial certificate|Emitir certificado parcial/,
+    })
+    .click();
+  const withCert = await pollBrief(
     briefId,
-    (b) => Boolean(b.brief.commitment),
-    120_000,
+    (b) => Boolean(b.brief.commitment?.certificate),
+    180_000,
   );
   hard(
-    "commitmentEmitted",
-    Boolean(withCommitment),
-    withCommitment ? "" : "brief.commitment never appeared",
+    "certificateEmitted",
+    Boolean(withCert),
+    withCert ? "" : "brief.commitment.certificate never appeared",
   );
-  if (!withCommitment) throw new Error("no commitment emitted");
-  const commitmentData = withCommitment.brief.commitment;
-  summary.commitment = {
-    signatureEnvelopePresent: Boolean(commitmentData.signature),
-    cryptographicallyVerified: null,
-    key_id: commitmentData.signature?.key_id ?? null,
-    algorithm: commitmentData.signature?.algorithm ?? null,
-    pack_hash: commitmentData.commitment?.pack_hash ?? null,
-    as_of: commitmentData.commitment?.as_of ?? null,
-    citas_verificadas: commitmentData.commitment?.citas_verificadas ?? null,
-    total_citas: commitmentData.commitment?.total_citas ?? null,
-  };
-  hard(
-    "signatureEnvelopePresent",
-    summary.commitment.signatureEnvelopePresent,
-    `key_id ${summary.commitment.key_id}`,
-  );
-  await writeArtifact(OUT, "get-brief-after-commitment.json", withCommitment);
-  await shot(page, "08-commitment-panel");
-  await dump(page, "08-commitment-panel");
+  if (!withCert) throw new Error("no certificate emitted");
+  await writeArtifact(OUT, "get-brief-after-certificate.json", withCert);
+  const partialHeader = await page
+    .locator("text=/Certificado parcial|Partial certificate/i")
+    .count();
+  hard("partialHeaderShown", partialHeader > 0);
+  await shot(page, "08-certificate-panel");
+  await dump(page, "08-certificate-panel");
 
   async function download(nameRe, filename) {
-    const [download] = await Promise.all([
+    const [dl] = await Promise.all([
       page.waitForEvent("download", { timeout: 30_000 }),
-      page.getByRole("button", { name: nameRe }).click(),
+      page.getByRole("button", { name: nameRe }).first().click(),
     ]);
-    const stream = await download.createReadStream();
+    const stream = await dl.createReadStream();
     if (!stream) throw new Error("download has no content");
-    const text = await readBoundedStream(stream, SIGNED_ARTIFACTS[filename]);
-    await writeSignedArtifact(OUT, filename, text);
+    const text = await readBoundedStream(stream, 2 * 1024 * 1024);
+    await writeArtifact(OUT, filename, text);
     log("downloaded:", filename);
+    return text;
   }
+  const certJson = await download(/certificado/i, "certificado.json");
+  const escritoTxt = await download(
+    /escrito-verificado|verified text/i,
+    "escrito-verificado.txt",
+  );
+  let commitmentJson = null;
   try {
-    await download(/download commitment\.json/i, "commitment.json");
-    await download(/download commitment\.sig\.json/i, "commitment.sig.json");
-    await download(/download \.pub/i, "content-signing-key.pub");
-    hard("downloadsCaptured", true);
+    commitmentJson = await download(/commitment\.json/i, "commitment.json");
+    if (withCert.brief.commitment.signature) {
+      await download(/commitment\.sig\.json/i, "commitment.sig.json");
+      await download(/\.pub/i, "content-signing-key.pub");
+    }
   } catch (e) {
-    hard(
-      "downloadsCaptured",
-      false,
-      redactText(e.message ?? "download failed").slice(0, 200),
-    );
-    throw e;
-  }
-
-  // --- step 7: third-party verifier (positive + negative control) ---
-  if (VERIFIER) {
-    const runVerifier = async (files, outFile) => {
-      const report = (code, stdout, stderr) =>
-        writeArtifact(
-          OUT,
-          outFile,
-          `command: python3 ${path.basename(VERIFIER)} ${files.join(" ")}\nexit: ${code}\n\n${stdout}${stderr}`.replaceAll(
-            homedir(),
-            "~",
-          ),
-          { maxChars: 200_000 },
-        );
-      try {
-        const { stdout, stderr } = await execFileP(
-          "python3",
-          [VERIFIER, ...files],
-          { cwd: OUT, maxBuffer: 4 * 1024 * 1024 },
-        );
-        await report(0, stdout, stderr);
-        return { code: 0, stdout, stderr };
-      } catch (e) {
-        const stdout = String(e.stdout ?? "");
-        const stderr = String(e.stderr ?? "");
-        await report(e.code ?? -1, stdout, stderr);
-        return { code: e.code ?? -1, stdout, stderr };
-      }
-    };
-
-    const pos = await runVerifier(
-      ["commitment.json", "commitment.sig.json", "content-signing-key.pub"],
-      "verifier.txt",
-    );
-    summary.verifierExitCode = pos.code;
-    const verified =
-      pos.code === 0 && /RESULTADO:\s*VERIFICADO/.test(pos.stdout ?? "");
-    summary.commitment.cryptographicallyVerified = verified;
-    soft("signatureCryptographicallyVerified", verified, `exit ${pos.code}`);
-    hard("verifierVerified", verified, `exit ${pos.code}`);
-
-    // Negative control: tamper one value; the signature must not verify.
-    const tampered = JSON.parse(
-      await readFile(path.join(OUT, "commitment.json"), "utf8"),
-    );
-    tampered.citas_verificadas = (tampered.citas_verificadas ?? 0) + 1;
-    await writeArtifact(OUT, "commitment.tampered.json", tampered);
-    const neg = await runVerifier(
-      [
-        "commitment.tampered.json",
-        "commitment.sig.json",
-        "content-signing-key.pub",
-      ],
-      "verifier-tampered.txt",
-    );
-    summary.verifierTamperedExitCode = neg.code;
-    soft("verifierRejectsTampered", neg.code === 1, `exit ${neg.code}`);
-  } else {
-    soft("signatureCryptographicallyVerified", false, "no --verifier given");
-  }
-
-  // --- step 8: es-ES detail screenshot in a second context (view-only, no agent) ---
-  try {
-    const esCtx = await browser.newContext({
-      locale: "es-ES",
-      viewport: { width: 1600, height: 950 },
-    });
-    const esPage = await esCtx.newPage();
-    await esPage.goto(`${BASE}/briefs/${briefId}`, {
-      waitUntil: "networkidle",
-    });
-    const before = existsSync(path.join(OUT, "21-es-brief.png"));
-    await shot(esPage, "21-es-brief");
-    const produced = !before && existsSync(path.join(OUT, "21-es-brief.png"));
-    await esCtx.close();
     soft(
-      "esScreenshots",
-      produced,
-      produced ? "21-es-brief.png" : "21-es-brief.png was not produced",
+      "engineDownloads",
+      false,
+      redactText(String(e.message ?? e)).slice(0, 200),
     );
+  }
+
+  const certObj = JSON.parse(certJson);
+  hard("certParcial", certObj.parcial === true);
+  hard("certParcialConfirmada", certObj.emision_parcial_confirmada === true);
+  hard(
+    "certFiveCitas",
+    Array.isArray(certObj.citas) && certObj.citas.length === 5,
+    `${certObj.citas?.length} citas`,
+  );
+  const cita640 = (certObj.citas ?? []).find((c) =>
+    c.cita.includes("artículo 640"),
+  );
+  hard("cert640Refused", cita640?.estado === "refused", cita640?.estado);
+  const { createHash } = await import("node:crypto");
+  const sha = createHash("sha256").update(escritoTxt, "utf8").digest("hex");
+  hard(
+    "certHashMatches",
+    certObj.escrito?.sha256 === sha,
+    `cert ${certObj.escrito?.sha256} vs text ${sha}`,
+  );
+
+  // Offline fingerprint check with this repo's verifier (positive + tampered).
+  try {
+    const { stdout: vout } = await execFileP(
+      "python3",
+      [
+        "verifier/verificar_certificado.py",
+        "certificado.json",
+        "escrito-verificado.txt",
+        ...(commitmentJson ? ["commitment.json"] : []),
+      ],
+      { cwd: OUT, maxBuffer: 4 * 1024 * 1024 },
+    );
+    await writeArtifact(OUT, "verificador.txt", vout);
+    hard("verificadorCoincide", true, "exit 0");
+    await writeArtifact(OUT, "escrito-tampered.txt", `${escritoTxt}x`);
+    try {
+      await execFileP(
+        "python3",
+        [
+          "verifier/verificar_certificado.py",
+          "certificado.json",
+          "escrito-tampered.txt",
+        ],
+        { cwd: OUT, maxBuffer: 4 * 1024 * 1024 },
+      );
+      hard("verificadorRejectsTampered", false, "exit 0 on tampered text");
+    } catch (e) {
+      await writeArtifact(
+        OUT,
+        "verificador-tampered.txt",
+        String(e.stdout ?? "") + String(e.stderr ?? ""),
+      );
+      hard("verificadorRejectsTampered", e.code === 1, `exit ${e.code}`);
+    }
   } catch (e) {
-    soft("esScreenshots", false, redactText(String(e)).slice(0, 200));
+    if (e.code === "ENOENT") soft("python3Absent", true, "python3 not found");
+    else
+      hard(
+        "verificadorCoincide",
+        false,
+        redactText(String(e.code ?? e.message)).slice(0, 200),
+      );
+  }
+
+  // --- optional: engine seal verifier for sealed runs ---
+  if (VERIFIER && withCert.brief.commitment.signature) {
+    try {
+      const { stdout } = await execFileP(
+        "python3",
+        [
+          VERIFIER,
+          "commitment.json",
+          "commitment.sig.json",
+          "content-signing-key.pub",
+        ],
+        { cwd: OUT, maxBuffer: 4 * 1024 * 1024 },
+      );
+      await writeArtifact(OUT, "verifier.txt", stdout);
+      soft("signatureCryptographicallyVerified", true, "exit 0");
+    } catch (e) {
+      await writeArtifact(
+        OUT,
+        "verifier.txt",
+        String(e.stdout ?? "") + String(e.stderr ?? ""),
+      );
+      soft("signatureCryptographicallyVerified", false, `exit ${e.code}`);
+    }
   }
 } catch (e) {
   aborted = true;
@@ -719,7 +806,7 @@ try {
   const touched = [
     ["comment60", threads.comment60],
     ["accept", threads.accept],
-    ["comment9999", threads.comment9999],
+    ["comment640", threads.comment640],
   ].filter(([, id]) => id);
   const labelsByThread = new Map();
   for (const [label, id] of touched) {
@@ -728,11 +815,11 @@ try {
   summary.threads = {
     comment60: threads.comment60,
     accept: threads.accept,
-    comment9999: threads.comment9999,
+    comment640: threads.comment640,
     singleThread:
       touched.length === 3 &&
       threads.comment60 === threads.accept &&
-      threads.accept === threads.comment9999,
+      threads.accept === threads.comment640,
   };
   soft(
     "singleThread",

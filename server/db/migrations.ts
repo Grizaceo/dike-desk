@@ -199,4 +199,10 @@ CREATE INDEX IF NOT EXISTS review_items_brief_idx ON review_items (brief_id, cre
     sql: {},
     run: applyIsoTimestampMigration,
   },
+  {
+    version: 4,
+    name: "citation-vigencia",
+    sql: `ALTER TABLE citations ADD COLUMN IF NOT EXISTS vigencia TEXT;
+ALTER TABLE citations ADD COLUMN IF NOT EXISTS historical_text_state TEXT`,
+  },
 ];

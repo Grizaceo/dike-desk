@@ -92,36 +92,53 @@ const messages = {
     editBodyLabel: "Brief text",
     verifyButton: "Verify with Diké",
     verifyProgress: "Verifying…",
-    emitCommitment: "Emit commitment",
-    committedSigned: "Signed commitment emitted",
-    committedUnsigned: "Commitment emitted (unsigned)",
+    emitCommitment: "Issue verification certificate",
+    committedSigned:
+      "Verification certificate issued, with integrity seal",
+    committedUnsigned: "Verification certificate issued (no seal)",
     verifyFailed: "Verification failed.",
     saveFailed: "Could not save the brief.",
-    commitFailed: "Could not emit the commitment.",
+    commitFailed: "Could not issue the certificate.",
     decideFailed: "Could not record the decision.",
     commentFailed: "Could not save the comment.",
     notVerified: "Not verified yet. Statuses come only from the Diké engine.",
-    metaVerified: "{{verified}}/{{total}} verified",
+    metaVerified: "{{verified}} of {{total}} detected citations exist and are in force",
     metaCorpus: "corpus",
-    metaAsOf: "as of {{date}}",
+    metaAsOfLawyer: "in force on {{date}} (date you chose)",
+    metaAsOfAgent: "in force on {{date}} (date the agent chose)",
+    metaAsOfEngine:
+      "in force on {{date}} (today's date, not necessarily the date of the facts)",
+    asOfLabel: "Reference date (in force on)",
+    asOfHint:
+      "Leave it empty and Diké uses today's date. You can choose another one, for example the date of the facts.",
     metaChecked:
-      "Diké checks that each provision exists, has citable text and was in force. It does not check that it supports your argument.",
+      "Diké checks the citations to statutes that it detects (not case law or scholarship): it confirms that each provision exists in its corpus, has citable text and was in force on the reference date. It does not confirm that the provision supports your argument or that the paraphrase is faithful.",
+    undetectedOne:
+      "1 mention looks like a citation to a statute and Diké did not report it. Check it by hand: it has no status.",
+    undetectedMany:
+      "{{count}} mentions look like citations to statutes and Diké did not report them. Check them by hand: they have no status.",
     activityTitle: "Activity",
-    agentProposes: "Agent proposes:",
-    userProposes: "You propose:",
+    agentProposes: "Agent's proposal:",
+    userProposes: "Your proposal:",
     withdraw: "withdraw this citation",
     statusPending: "pending",
     statusAccepted: "accepted",
     statusRejected: "rejected",
-    statusExpired: "expired",
+    statusExpired: "no longer in effect",
     authorYou: "You",
     authorAgent: "Agent",
     authorEngine: "Diké",
     previousVerification: "Previous verification",
     engineLabel: "Engine",
     sourceLink: "Source",
+    textHashLabel: "Text hash",
+    verifiedWarning:
+      "In force on {{as_of}} according to corpus {{pack_hash}}. Diké does not check whether the provision supports the sentence or whether the paraphrase is faithful (terms, amounts, requirements): compare it with the official text.",
+    noTextSource:
+      "Diké does not return the provision's text. Read it at the source before using the citation.",
+    noText: "Diké does not return the provision's text.",
     askAgentPlaceholder:
-      'Tell the agent… e.g. "this is the Código del Trabajo"',
+      "Tell the agent… e.g., «this is the Labor Code»",
     commentLabel: "Comment for the agent",
     askAgentButton: "Send to agent",
     acceptButton: "Accept",
@@ -137,11 +154,24 @@ const messages = {
     copy: "Copy",
     copySuccess: "Copied to clipboard",
     copyFailed: "Could not copy to the clipboard.",
+    partialTitle: "Some citations are not verified",
+    partialBody:
+      "{{count}} of {{total}} detected citations are not verified. If you continue, the certificate will say it is partial and will list every citation with its status. It is better to fix or withdraw them and verify again.",
+    partialConfirm: "Issue partial certificate",
+    partialCancel: "Go back and review",
+    privacyConfigured:
+      "Privacy: the Diké engine runs on this machine and offline. The agent sends the brief's text and your comments to its model provider: {{engine}} · {{model}}. Unless that model runs on your machine, the text leaves it.",
+    privacyCustomEndpoint:
+      "A custom endpoint is in use (OPENAI_BASE_URL): check the agent's Settings to see which service it points to.",
+    privacyNotConfigured:
+      "Privacy: the Diké engine runs on this machine and offline. The agent has no model provider configured.",
+    privacyUnknown:
+      "Privacy: the Diké engine runs on this machine and offline. The agent sends the brief's text and your comments to its model provider; check which one in the agent's Settings.",
   },
   briefs: {
     title: "Briefs",
     description:
-      "Paste a brief. Diké checks every statutory citation against a dated, hash-identified corpus and refuses what it cannot prove. You decide every fix.",
+      "Paste a brief. Diké checks every citation to statutes (not case law or scholarship) against a dated, hash-identified corpus, and does not verify what it cannot prove. You decide every fix.",
     fieldTitle: "Title",
     fieldBody: "Text",
     bodyPlaceholder: "EN LO PRINCIPAL: …",
@@ -153,50 +183,118 @@ const messages = {
     empty: "No briefs yet.",
   },
   commitment: {
-    emitted: "Commitment emitted",
-    signedBadge: "Signed · key_id {{key_id}}",
-    unsignedBadge: "Unsigned",
-    summary: "Summary",
+    emitted: "Verification certificate issued",
+    title: "Verification certificate (commitment)",
+    partialHeaderOne: "Partial certificate: 1 citation not verified",
+    partialHeaderMany: "Partial certificate: {{count}} citations not verified",
+    listHeading: "All detected citations",
+    hashLabel: "Brief fingerprint (SHA-256 of the normalized text)",
+    textMatchOk: "The brief's current text matches this fingerprint.",
+    textMismatch:
+      "The brief's current text does NOT match this fingerprint: this certificate does not correspond to the current text.",
+    downloadCertificate: "Download certificado.json",
     downloadJson: "Download commitment.json",
+    downloadText: "Download the certificate's text (.txt)",
     downloadSig: "Download commitment.sig.json",
     downloadPub: "Download .pub",
+    labelCommitmentHash: "Commitment fingerprint (commitment_hash, SHA-256)",
+    labelKeyId: "Key identifier (key_id)",
     labelPackHash: "Corpus (pack_hash)",
     labelAsOf: "Reference date (as_of)",
-    labelConstanciaAt: "Constancia at",
-    labelVerified: "Verified citations",
-    labelRefused: "({{failures}} refused)",
+    labelAsOfOrigen: "Date chosen by",
+    asOfOrigenLawyer: "the lawyer",
+    asOfOrigenAgent: "the agent",
+    asOfOrigenEngine: "today's date (engine)",
+    labelEmittedAt: "Issued",
     labelScope: "Scope",
     showJson: "Show full JSON",
-    sigEnvelope: "Signature envelope",
-    labelKeyId: "key_id",
+    sealTitle: "Integrity seal",
+    badgeSealed: "commitment.json sealed · key {{key_id}}",
+    badgeUnsealed: "No seal",
+    sealScope:
+      "The seal covers commitment.json only. certificado.json (title, brief fingerprint, citation list and partial flag) is not sealed: anyone can edit it. verificar_certificado.py checks that the text and the commitment match what the certificate says, not that the certificate is authentic.",
+    certPrivacy:
+      "certificado.json includes the brief's title, its fingerprint and the text of every citation. Share it only with whoever can already see the brief: with the fingerprint, anyone holding a draft can check whether it is this one.",
+    sealExplanation:
+      "The seal proves that commitment.json has not changed since it was sealed with this key. It does not identify the person who issued the certificate, does not give a certain date, and is not an advanced electronic signature under Chilean Law 19.799.",
+    demoKey:
+      "Demo key ({{key_id}}): it identifies no one. It is not the content key declared by the Diké project ({{published}}).",
+    declaredKey:
+      "Content key declared by the Diké project: it identifies the engine, not a person.",
+    pubKeyCaveat:
+      "This public key travels with the certificate itself: it can check the seal, but it is not a source of trust. Compare it with a key published through an independent channel.",
+    independentVerifier:
+      "The independent seal verifier (verificar_tercero.py) ships with the Diké engine repository, which is not public yet. Until then, a third party without access to that repository cannot check the seal with it. The brief fingerprint is checked with verifier/verificar_certificado.py in this repository.",
+    unsealed:
+      "No seal: nobody can check that this file did not change after it was issued. Whoever administers the installation can enable the seal.",
     labelAlgorithm: "Algorithm",
     labelRole: "Role",
-    labelCommitmentHash: "commitment_hash (SHA-256)",
     labelPubkey: "Public key (content-signing-key.pub)",
-    differentKeyTitle: "Signed with a different key",
-    differentKeyDesc:
-      "Signed with key {{key_id}}, not the Diké key published in KEYS.md ({{published}}). The signature proves the commitment was not altered since it was signed with this key; it does not prove who signed it.",
-    offlineTitle: "Offline verification",
-    offlineDesc:
-      "Save the three downloaded files in one folder. The verifier needs neither Diké's code nor a network connection.",
-    offlineStep1: "1. Download the verifier script",
-    offlineStep2: "2. Verify the signed commitment",
-    unsignedTitle: "Not signed: nothing to verify offline",
-    unsignedDesc:
-      "Without a signature, nobody can tell whether this file was changed after Diké emitted it. To sign commitments, run a local engine (DIKE_BIN) with a content key (LEXO_CONTENT_SIGNING_KEY_PATH).",
-    offlineDocs: "Full documentation (KEYS.md)",
+    offlineStep2: "Check commitment.json\u2019s integrity seal",
+  },
+  reason: {
+    ambiguous:
+      "The citation does not identify a single provision (e.g., the statute is missing).",
+    unresolvable:
+      "Diké did not find it in its corpus. That does not prove the provision does not exist.",
+    resolvedNotVerified:
+      "Diké identified the provision but could not establish that it was in force on the reference date.",
+    notInForce:
+      "Diké does not record the provision as in force on the reference date.",
+    temporalUnknown:
+      "Diké could not determine whether the provision applied on the reference date. That is not the same as repeal.",
+    provenanceIncomplete:
+      "The provenance of the text in the corpus is incomplete, so Diké does not vouch for it.",
+  },
+  vigencia: {
+    inForce: "Recorded as in force on the reference date.",
+    outOfForce: "Not recorded as in force on the reference date.",
+    unknownBeforeSnapshot:
+      "The corpus has no evidence of being in force before the date it was captured.",
+    desconocido: "Unknown whether in force.",
+  },
+  historical: {
+    unavailable: "No historical text for that date.",
   },
   status: {
-    verified: "Verified",
+    verified: "Exists and in force",
     ambiguous: "Ambiguous",
-    refused: "Refused",
-    stale: "Stale — verify again",
+    refused: "Could not verify",
+    stale: "Out of date: verify again",
   },
   verdict: {
     notVerified: "Not verified",
-    hasProblems: "Has problems",
-    noCitations: "No citations",
-    noCorpus: "No corpus",
+    allVerified: "All exist and are in force",
+    hasProblems: "Some citations are not verified",
+    noCitations: "Diké detected no citations",
+    noCorpus: "Could not verify (no corpus)",
+  },
+  errors: {
+    not_found: "The brief or item was not found.",
+    no_citations: "Diké detected no citations: there is nothing to certify.",
+    nothing_verified: "No citation was verified: there is nothing to certify.",
+    not_verified: "Verify the current text before issuing the certificate.",
+    partial_needs_confirmation:
+      "There are unverified citations: confirm the partial issue on screen.",
+    commitment_mismatch:
+      "The engine result does not match the stored verification. Verify again before issuing.",
+    commitment_not_emitted:
+      "The engine did not emit the certificate for this brief.",
+    commitment_hash_mismatch:
+      "The commitment fingerprint does not match the seal's. The certificate was not saved.",
+    already_decided: "This suggestion was already decided.",
+    stale_citation: "The brief changed under this suggestion. Verify again.",
+    brief_changed:
+      "The brief changed while you were editing. Reload and try again.",
+    dike_unavailable: "The Diké engine is not configured on this installation.",
+    dike_docker_unavailable:
+      "Docker could not be used to run the Diké engine.",
+    dike_failed: "The Diké engine failed. Try again.",
+    dike_bad_output: "The Diké engine returned invalid output.",
+    brief_too_large: "The brief exceeds the 400 KB the verifier accepts.",
+    invalid_as_of:
+      "The reference date must be a valid date (YYYY-MM-DD) not after today.",
+    empty_update: "There are no changes to save.",
   },
   root: {
     commandActions: "Actions",

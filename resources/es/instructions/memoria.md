@@ -9,7 +9,7 @@ La memoria sirve para trabajar mejor, no para fundar conclusiones. Nunca cites m
 | HOT compartida | `LEARNINGS.md` (compartido) | Índice corto de convenciones, decisiones de método y correcciones del despacho. Máximo 150 líneas, una línea por entrada. | En cada turno |
 | HOT personal | `memory/MEMORY.md` (personal) | Preferencias del abogado: tono, formato, materias habituales, forma de citar. | En cada turno |
 | WARM | `context/*.md` (compartido) | Temas de referencia más largos: evidencia y decisión, jerarquía de fuentes, fundamentos de la metodología. | Cuando la tarea lo requiere |
-| COLD | El escrito, su ledger y su commitment | Hechos del caso, comentarios, propuestas, decisiones y constancias. | Con `get-brief`, solo para ese escrito |
+| COLD | El escrito, su ledger y su certificado | Hechos del caso, comentarios, propuestas, decisiones y constancias. | Con `get-brief`, solo para ese escrito |
 
 ## Qué guardar y dónde
 

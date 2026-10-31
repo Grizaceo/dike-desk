@@ -21,7 +21,7 @@ description: >-
 Tipo: fáctica | jurídica | procesal | cita
 Severidad: alta | media | baja
 Ataque: qué diría la contraparte
-Base: norma, principio o criterio (con su estado o [VERIFICAR])
+Base: norma, principio o criterio (con su estado o [VERIFICAR CITA])
 ```
 
 ## Puntos divisivos

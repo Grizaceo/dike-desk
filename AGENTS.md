@@ -36,7 +36,7 @@ Before building common workspace or agent UI, read `agent-native-toolkit`; for s
 
 Citation review for Chilean legal briefs. `/briefs` lists briefs; `/briefs/:briefId` shows the text with every citation the engine reported marked in place, and a review panel. On brief pages `navigation` adds `briefId`.
 
-- Only `verify-brief` (the Diké engine) sets citation status. `verified` is the only verified state; `ambiguous`, `refused` and `stale` are not. Never upgrade a status in prose.
+- Only `verify-brief` (the Diké engine) sets citation status; it takes an optional reference date (`asOf`). `verified` is the only verified state — it means the provision exists and is in force on `as_of`; `ambiguous`, `refused` and `stale` are not. Never upgrade a status in prose.
 - Fixes go through `propose-fix` (pending suggestion). Only the lawyer decides, in the UI (`decide-suggestion` is `uiOnly`). Accepting changes the text and makes every citation `stale`: verify again.
 - Answer lawyer comments with `add-comment` so the answer stays on the page; the author is recorded from the caller, never from arguments.
 - Diké does not certify that a provision supports the argument. Report `pack_hash` and `as_of` with results.
@@ -49,8 +49,17 @@ Citation review for Chilean legal briefs. `/briefs` lists briefs; `/briefs/:brie
 | create-brief    | New brief from text, or `demo: true`                |
 | get-brief       | Text, citations, review ledger                      |
 | update-brief    | Lawyer edits title/text (UI only, from the revision it started) |
-| verify-brief    | Run Diké, replace citation statuses                 |
+| verify-brief    | Run Diké (optional `asOf` reference date), replace citation statuses |
 | propose-fix     | Suggestion for one citation (author from the caller) |
 | decide-suggestion | Lawyer accepts/rejects (UI only)                  |
 | add-comment     | Comment on a brief or citation                      |
-| emit-commitment | Engine-emitted commitment of verified citations     |
+| emit-commitment | Issue the verification certificate (blocked while citations are unverified; partial only with the lawyer's UI confirmation; carries the brief fingerprint) |
+| emit-partial-certificate | Same emission, allows partial (UI only — the lawyer's on-screen confirmation) |
+
+
+### Pending in the Diké engine
+
+- Sign a binding to the brief (fingerprint or salted commitment) inside the
+  sealed commitment — today the fingerprint lives in the dike-desk wrapper.
+- Return the provision text or excerpt so the UI can show it.
+- Publish `verificar_tercero.py`, KEYS.md and the pack_hash manifest.

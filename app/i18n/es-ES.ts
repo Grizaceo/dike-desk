@@ -93,36 +93,52 @@ const messages = {
     editBodyLabel: "Texto del escrito",
     verifyButton: "Verificar con Diké",
     verifyProgress: "Verificando…",
-    emitCommitment: "Emitir commitment",
-    committedSigned: "Commitment firmado emitido",
-    committedUnsigned: "Commitment emitido (sin firmar)",
+    emitCommitment: "Emitir certificado de verificación",
+    committedSigned: "Certificado de verificación emitido; commitment.json lleva sello de integridad.",
+    committedUnsigned: "Certificado de verificación emitido (sin sello)",
     verifyFailed: "La verificación falló.",
     saveFailed: "No se pudo guardar el escrito.",
-    commitFailed: "No se pudo emitir el commitment.",
+    commitFailed: "No se pudo emitir el certificado.",
     decideFailed: "No se pudo registrar la decisión.",
     commentFailed: "No se pudo guardar el comentario.",
     notVerified: "Aún no verificado. Los estados vienen solo del motor Diké.",
-    metaVerified: "{{verified}}/{{total}} verificadas",
+    metaVerified: "{{verified}} de {{total}} citas detectadas existen y están vigentes",
     metaCorpus: "corpus",
-    metaAsOf: "al {{date}}",
+    metaAsOfLawyer: "vigencia al {{date}} (fecha elegida por ti)",
+    metaAsOfAgent: "vigencia al {{date}} (fecha elegida por el agente)",
+    metaAsOfEngine:
+      "vigencia al {{date}} (fecha de hoy, no necesariamente la de los hechos)",
+    asOfLabel: "Fecha de referencia (vigencia)",
+    asOfHint:
+      "Si la dejas vacía, Diké usa la fecha de hoy. Puedes elegir otra, por ejemplo la fecha de los hechos.",
     metaChecked:
-      "Diké verifica que cada precepto exista, tenga texto citable y esté vigente. No verifica que respalde tu argumento.",
+      "Diké revisa las citas a normas legales que detecta (no jurisprudencia ni doctrina): comprueba que cada norma exista en su corpus, tenga texto citable y esté vigente a la fecha de referencia. No comprueba que respalde tu argumento ni que la paráfrasis sea fiel.",
+    undetectedOne:
+      "Hay 1 mención que parece una cita a una norma y que Diké no reportó. Revísala a mano: no tiene estado.",
+    undetectedMany:
+      "Hay {{count}} menciones que parecen citas a normas y que Diké no reportó. Revísalas a mano: no tienen estado.",
     activityTitle: "Actividad",
-    agentProposes: "El agente propone:",
-    userProposes: "Propones:",
+    agentProposes: "Propuesta del agente:",
+    userProposes: "Tu propuesta:",
     withdraw: "retirar esta cita",
     statusPending: "pendiente",
     statusAccepted: "aceptada",
     statusRejected: "rechazada",
-    statusExpired: "vencida",
+    statusExpired: "sin efecto",
     authorYou: "Tú",
     authorAgent: "Agente",
     authorEngine: "Diké",
     previousVerification: "Verificación anterior",
     engineLabel: "Motor",
     sourceLink: "Fuente",
+    textHashLabel: "Hash del texto",
+    verifiedWarning:
+      "Vigente al {{as_of}} según el corpus {{pack_hash}}. Diké no revisa si la norma respalda la frase ni si la paráfrasis es fiel (plazos, montos, requisitos): compárala con el texto oficial.",
+    noTextSource:
+      "Diké no entrega el texto de la norma. Léelo en la fuente antes de usar la cita.",
+    noText: "Diké no entrega el texto de la norma.",
     askAgentPlaceholder:
-      'Cuéntale al agente… ej. "esto es el Código del Trabajo"',
+      "Cuéntale al agente… p. ej., «esto es el Código del Trabajo»",
     commentLabel: "Comentario para el agente",
     askAgentButton: "Enviar al agente",
     acceptButton: "Aceptar",
@@ -138,11 +154,24 @@ const messages = {
     copy: "Copiar",
     copySuccess: "Copiado al portapapeles",
     copyFailed: "No se pudo copiar al portapapeles.",
+    partialTitle: "Hay citas sin verificar",
+    partialBody:
+      "{{count}} de {{total}} citas detectadas no están verificadas. Si continúas, el certificado dirá que es parcial y listará todas las citas con su estado. Lo recomendable es corregirlas o retirarlas y verificar de nuevo.",
+    partialConfirm: "Emitir certificado parcial",
+    partialCancel: "Volver a revisar",
+    privacyConfigured:
+      "Privacidad: el motor Diké corre en este equipo (con Docker, además, sin red). El agente envía el texto del escrito y tus comentarios a su proveedor de modelo: {{engine}} · {{model}}. Salvo que ese modelo corra en tu equipo, el texto sale de él.",
+    privacyCustomEndpoint:
+      "Usa un endpoint propio (OPENAI_BASE_URL): revisa en Ajustes del agente a qué servicio apunta.",
+    privacyNotConfigured:
+      "Privacidad: el motor Diké corre en este equipo (con Docker, además, sin red). El agente no tiene un proveedor de modelo configurado.",
+    privacyUnknown:
+      "Privacidad: el motor Diké corre en este equipo (con Docker, además, sin red). El agente envía el texto del escrito y tus comentarios a su proveedor de modelo; revisa cuál en Ajustes del agente.",
   },
   briefs: {
     title: "Escritos",
     description:
-      "Pega un escrito. Diké revisa cada cita legal contra un corpus fechado e identificado por hash, y rechaza lo que no puede probar. Tú decides cada corrección.",
+      "Pega un escrito. Diké revisa cada cita a normas legales (no jurisprudencia ni doctrina) contra un corpus fechado e identificado por hash, y no verifica lo que no puede probar. Tú decides cada corrección.",
     fieldTitle: "Título",
     fieldBody: "Texto",
     bodyPlaceholder: "EN LO PRINCIPAL: …",
@@ -154,50 +183,120 @@ const messages = {
     empty: "Aún no hay escritos.",
   },
   commitment: {
-    emitted: "Commitment emitido",
-    signedBadge: "Firmado · key_id {{key_id}}",
-    unsignedBadge: "Sin firmar",
-    summary: "Resumen",
+    emitted: "Certificado de verificación emitido",
+    title: "Certificado de verificación (commitment)",
+    partialHeaderOne: "Certificado parcial: 1 cita no verificada",
+    partialHeaderMany: "Certificado parcial: {{count}} citas no verificadas",
+    listHeading: "Todas las citas detectadas",
+    hashLabel: "Huella del escrito (SHA-256 del texto normalizado)",
+    textMatchOk: "El texto actual del escrito coincide con esta huella.",
+    textMismatch:
+      "El texto actual del escrito NO coincide con esta huella: este certificado no corresponde al texto actual.",
+    downloadCertificate: "Descargar certificado.json",
     downloadJson: "Descargar commitment.json",
+    downloadText: "Descargar el texto del certificado (.txt)",
     downloadSig: "Descargar commitment.sig.json",
     downloadPub: "Descargar .pub",
+    labelCommitmentHash: "Huella de commitment.json (commitment_hash, SHA-256)",
+    labelKeyId: "Identificador de la llave (key_id)",
     labelPackHash: "Corpus (pack_hash)",
     labelAsOf: "Fecha de referencia (as_of)",
-    labelConstanciaAt: "Constancia en",
-    labelVerified: "Citas verificadas",
-    labelRefused: "({{failures}} rechazadas)",
+    labelAsOfOrigen: "Fecha elegida por",
+    asOfOrigenLawyer: "el abogado",
+    asOfOrigenAgent: "el agente",
+    asOfOrigenEngine: "fecha de hoy (motor)",
+    labelEmittedAt: "Emitido",
     labelScope: "Alcance",
     showJson: "Mostrar JSON completo",
-    sigEnvelope: "Sobre de firma",
-    labelKeyId: "key_id",
+    sealTitle: "Sello de integridad",
+    badgeSealed: "commitment.json con sello de integridad · llave {{key_id}}",
+    badgeUnsealed: "Sin sello",
+    sealScope:
+      "El sello cubre solo commitment.json. certificado.json (título, huella del escrito, lista de citas y carácter parcial) no está sellado: cualquiera puede editarlo. verificar_certificado.py comprueba que el texto y commitment.json coinciden con lo que dice el certificado, no que el certificado sea auténtico.",
+    certPrivacy:
+      "certificado.json incluye el título del escrito, su huella y el texto de cada cita. Compártelo solo con quien ya pueda ver el escrito: con la huella, cualquiera que tenga un borrador puede comprobar si es este.",
+    sealExplanation:
+      "El sello prueba que commitment.json no cambió desde que se selló con esta llave. No identifica a la persona que emitió el certificado, no da fecha cierta y no es firma electrónica avanzada en el sentido de la Ley 19.799.",
+    demoKey:
+      "Llave de demostración ({{key_id}}): no identifica a nadie. No es la llave de contenido que declara el proyecto Diké ({{published}}).",
+    declaredKey:
+      "Llave de contenido que declara el proyecto Diké: identifica al motor, no a una persona.",
+    pubKeyCaveat:
+      "Esta llave pública viaja con el propio certificado: sirve para comprobar el sello, no como fuente de confianza. Compárala con una llave publicada por un canal independiente.",
+    independentVerifier:
+      "El verificador independiente del sello (verificar_tercero.py) viene con el repositorio del motor Diké, que aún no es público. Mientras tanto, un tercero sin acceso a ese repositorio no puede comprobar el sello con él. La huella del escrito se comprueba con verifier/verificar_certificado.py de este repositorio.",
+    unsealed:
+      "Sin sello: nadie puede comprobar que este archivo no cambió después de emitirse. Quien administra la instalación puede activar el sello.",
     labelAlgorithm: "Algoritmo",
     labelRole: "Rol",
-    labelCommitmentHash: "commitment_hash (SHA-256)",
     labelPubkey: "Clave pública (content-signing-key.pub)",
-    differentKeyTitle: "Firmado con una llave distinta",
-    differentKeyDesc:
-      "Firmado con la llave {{key_id}}, no con la llave de Diké publicada en KEYS.md ({{published}}). La firma prueba que el commitment no se alteró desde que se firmó con esta llave; no prueba quién lo firmó.",
-    offlineTitle: "Verificación sin conexión",
-    offlineDesc:
-      "Guarda los tres archivos descargados en una carpeta. El verificador no necesita el código de Diké ni conexión a la red.",
-    offlineStep1: "1. Descargar el script verificador",
-    offlineStep2: "2. Verificar el commitment firmado",
-    unsignedTitle: "Sin firma: no hay nada que verificar sin conexión",
-    unsignedDesc:
-      "Sin firma, nadie puede saber si este archivo cambió después de que Diké lo emitió. Para firmar commitments, usa un motor local (DIKE_BIN) con una llave de contenido (LEXO_CONTENT_SIGNING_KEY_PATH).",
-    offlineDocs: "Documentación completa (KEYS.md)",
+    offlineStep2: "Comprobar el sello de integridad de commitment.json",
+  },
+  reason: {
+    ambiguous:
+      "La cita no identifica una sola norma (p. ej., falta el cuerpo legal).",
+    unresolvable:
+      "Diké no la encontró en su corpus. Eso no prueba que la norma no exista.",
+    resolvedNotVerified:
+      "Diké identificó la norma, pero no pudo acreditar su vigencia a la fecha de referencia.",
+    notInForce:
+      "Diké no registra la norma como vigente a la fecha de referencia.",
+    temporalUnknown:
+      "Diké no pudo determinar si la norma regía a la fecha de referencia. Eso no equivale a una derogación.",
+    provenanceIncomplete:
+      "La procedencia del texto en el corpus está incompleta, así que Diké no la acredita.",
+  },
+  vigencia: {
+    inForce: "Figura vigente a la fecha de referencia.",
+    outOfForce: "No figura vigente a la fecha de referencia.",
+    unknownBeforeSnapshot:
+      "El corpus no tiene evidencia de vigencia para una fecha anterior a su captura.",
+    desconocido: "Vigencia desconocida.",
+  },
+  historical: {
+    unavailable: "No hay texto histórico para esa fecha.",
   },
   status: {
-    verified: "Verificada",
+    verified: "Existe y está vigente",
     ambiguous: "Ambigua",
-    refused: "Rechazada",
-    stale: "Desactualizada — verificar de nuevo",
+    refused: "No se pudo verificar",
+    stale: "Desactualizada: verificar de nuevo",
   },
   verdict: {
     notVerified: "No verificado",
-    hasProblems: "Con problemas",
-    noCitations: "Sin citas",
-    noCorpus: "Sin corpus",
+    allVerified: "Todas existen y están vigentes",
+    hasProblems: "Hay citas sin verificar",
+    noCitations: "Diké no detectó citas",
+    noCorpus: "No se pudo verificar (sin corpus)",
+  },
+  errors: {
+    not_found: "No se encontró el escrito o el elemento.",
+    no_citations:
+      "Diké no detectó citas: no hay nada que certificar.",
+    nothing_verified:
+      "Ninguna cita quedó verificada: no hay nada que certificar.",
+    not_verified: "Verifica el texto actual antes de emitir el certificado.",
+    partial_needs_confirmation:
+      "Hay citas sin verificar: confirma la emisión parcial en la pantalla.",
+    commitment_mismatch:
+      "El resultado del motor no coincide con la verificación guardada. Verifica de nuevo antes de emitir.",
+    commitment_not_emitted:
+      "El motor no emitió el certificado para este escrito.",
+    commitment_hash_mismatch:
+      "La huella commitment_hash no coincide con la del sello. No se guardó el certificado.",
+    already_decided: "Esta sugerencia ya fue decidida.",
+    stale_citation: "El escrito cambió bajo esta sugerencia. Verifica de nuevo.",
+    brief_changed:
+      "El escrito cambió mientras lo editabas. Recarga y vuelve a intentarlo.",
+    dike_unavailable: "El motor Diké no está configurado en esta instalación.",
+    dike_docker_unavailable:
+      "No se pudo usar Docker para ejecutar el motor Diké.",
+    dike_failed: "El motor Diké falló. Inténtalo de nuevo.",
+    dike_bad_output: "El motor Diké devolvió una salida no válida.",
+    brief_too_large: "El escrito supera los 400 KB que acepta el verificador.",
+    invalid_as_of:
+      "La fecha de referencia debe ser una fecha válida (AAAA-MM-DD) que no sea posterior a hoy.",
+    empty_update: "No hay cambios que guardar.",
   },
   root: {
     commandActions: "Acciones",

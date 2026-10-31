@@ -20,7 +20,7 @@ If any of the four is missing, ask for it and do not compute.
 
 ## Counting
 
-1. Identify the norm and its text; if it does not have `verified` status in the current record, mark it `[VERIFICAR]`.
+1. Identify the norm and its text; if it does not have `verified` status in the current record, mark it `[VERIFICAR CITA]`.
 2. Determine whether the norm sets working days or calendar days, and how it treats holidays and suspensions. Do not presume it: it depends on the body of law and the proceeding.
 3. Compute step by step, showing the first day, each exclusion and the last day.
 4. Account for holidays or suspensions only with a source that proves them.

@@ -1,8 +1,5 @@
 import { sendToAgentChat } from "@agent-native/core/client/agent-chat";
-import {
-  actionErrorMessage,
-  useActionMutation,
-} from "@agent-native/core/client/hooks";
+import { useActionMutation } from "@agent-native/core/client/hooks";
 import { useT } from "@agent-native/core/client/i18n";
 import {
   IconCheck,
@@ -19,12 +16,12 @@ import {
 } from "@/components/briefs/ReviewAuthor";
 import { StatusBadge } from "@/components/briefs/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { safeExternalUrl } from "@/lib/brief-review";
+import { actionErrorText, engineReasonKeys, safeExternalUrl } from "@/lib/brief-review";
 import type { Citation, ReviewItem } from "@/lib/brief-types";
 import { cn } from "@/lib/utils";
 
-function toastError(fallback: string) {
-  return (error: unknown) => toast.error(actionErrorMessage(error) ?? fallback);
+function toastError(t: (k: string, p?: Record<string, unknown>) => string, fallbackKey: string) {
+  return (error: unknown) => toast.error(actionErrorText(t, error, fallbackKey));
 }
 
 export default function CitationCard({
@@ -35,6 +32,8 @@ export default function CitationCard({
   onSelect,
   onShowInText,
   decisionsLocked = false,
+  metaAsOf,
+  metaPackHash,
 }: {
   briefId: string;
   citation: Citation;
@@ -45,16 +44,23 @@ export default function CitationCard({
   onShowInText?: (() => void) | undefined;
   /** Page is editing, verifying, saving, or emitting a commitment. */
   decisionsLocked?: boolean;
+  /** Reference date / corpus from the brief's last verification (verified warning). */
+  metaAsOf?: string | undefined;
+  metaPackHash?: string | undefined;
 }) {
   const t = useT();
   const [comment, setComment] = useState("");
   const sourceUrl = safeExternalUrl(citation.sourceUrl);
   const decide = useActionMutation("decide-suggestion", {
-    onError: toastError(t("brief.decideFailed")),
+    onError: toastError(t, "brief.decideFailed"),
   });
   const addComment = useActionMutation("add-comment", {
-    onError: toastError(t("brief.commentFailed")),
+    onError: toastError(t, "brief.commentFailed"),
   });
+  const reasonKeys = engineReasonKeys(citation);
+  const techLine = [citation.resolution, citation.vigencia, citation.historicalTextState]
+    .filter(Boolean)
+    .join(" · ");
 
   function askAgent(event: React.FormEvent) {
     event.preventDefault();
@@ -115,9 +121,33 @@ export default function CitationCard({
       {citation.label ? (
         <p className="text-xs text-muted-foreground">{citation.label}</p>
       ) : null}
-      {citation.status !== "verified" && citation.resolution ? (
-        <p className="text-xs">
-          {t("brief.engineLabel")}: <code>{citation.resolution}</code>
+      {citation.status === "verified" ? (
+        <p className="text-xs text-muted-foreground">
+          {t("brief.verifiedWarning", {
+            as_of: metaAsOf ?? "",
+            pack_hash: metaPackHash ?? "",
+          })}
+        </p>
+      ) : (
+        <>
+          {reasonKeys.map((key) => (
+            <p key={key} className="text-xs">
+              {t(key)}
+            </p>
+          ))}
+          {techLine ? (
+            <p className="text-xs text-muted-foreground">
+              <code>{techLine}</code>
+            </p>
+          ) : null}
+        </>
+      )}
+      <p className="text-xs text-muted-foreground">
+        {sourceUrl ? t("brief.noTextSource") : t("brief.noText")}
+      </p>
+      {citation.textSha256 ? (
+        <p className="text-xs text-muted-foreground">
+          {t("brief.textHashLabel")}: <code>{citation.textSha256.slice(0, 12)}</code>
         </p>
       ) : null}
       {sourceUrl ? (
@@ -151,7 +181,7 @@ export default function CitationCard({
                 <em>{t("brief.withdraw")}</em>
               )}
             </p>
-            <p className="mt-1 text-muted-foreground">{item.body}</p>
+            <p className="mt-1 text-muted-foreground">{item.body === "accepted" ? t("brief.statusAccepted") : item.body === "rejected" ? t("brief.statusRejected") : item.body}</p>
             {item.state === "pending" ? (
               <div className="mt-2 flex gap-2">
                 <Button
@@ -206,7 +236,7 @@ export default function CitationCard({
             <span className="font-medium">
               <ReviewAuthor author={item.author} />:
             </span>{" "}
-            {item.body}
+            {item.body === "accepted" ? t("brief.statusAccepted") : item.body === "rejected" ? t("brief.statusRejected") : item.body}
           </p>
         ),
       )}
@@ -216,7 +246,7 @@ export default function CitationCard({
           role="alert"
           className="text-xs font-medium text-red-700 dark:text-red-300"
         >
-          {actionErrorMessage(decide.error) ?? t("brief.decideFailed")}
+          {actionErrorText(t, decide.error, "brief.decideFailed")}
         </p>
       ) : null}
 

@@ -4,7 +4,7 @@ import { APP_TITLE } from "@/lib/app-config";
 
 const SEO_TITLE = `${APP_TITLE} — citation review for Chilean legal briefs`;
 const SEO_DESCRIPTION =
-  "Diké Desk marks every statutory citation in a Chilean legal brief against a dated, hash-identified corpus: verified, ambiguous or refused — and the lawyer decides every fix.";
+  "Diké Desk marks every statutory citation in a Chilean legal brief against a dated, hash-identified corpus: exists and in force, ambiguous, or could not verify — and the lawyer decides every fix.";
 
 export function meta() {
   return [

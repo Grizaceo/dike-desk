@@ -29,7 +29,7 @@ export default defineAction({
   },
   run: async ({ briefId, expectedUpdatedAt, title, body }) => {
     if (title === undefined && body === undefined)
-      fail("Nothing to update.", { errorCode: "empty_update" });
+      fail("No hay cambios que guardar.", { errorCode: "empty_update" });
     const bodyChanged = await getDb().transaction(async (tx) => {
       const brief = await lockBrief(tx, briefId, "editor");
       assertBriefRevision(brief.updatedAt, expectedUpdatedAt);

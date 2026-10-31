@@ -35,7 +35,7 @@ export default defineAction({
       )
       .limit(1);
     if (!found)
-      fail("Suggestion not found.", {
+      fail("No se encontró el escrito o el elemento.", {
         errorCode: "not_found",
         statusCode: 404,
       });
@@ -54,12 +54,12 @@ export default defineAction({
         )
         .limit(1);
       if (!item)
-        fail("Suggestion not found.", {
+        fail("No se encontró el escrito o el elemento.", {
           errorCode: "not_found",
           statusCode: 404,
         });
       if (item.state !== "pending")
-        fail(`Suggestion is already ${item.state}.`, {
+        fail("Esta sugerencia ya fue decidida.", {
           errorCode: "already_decided",
           statusCode: 409,
         });
@@ -87,7 +87,7 @@ export default defineAction({
           citation.start < 0 ||
           body.slice(citation.start, citation.end) !== citation.raw
         ) {
-          fail("The brief changed under this suggestion. Verify again.", {
+          fail("El escrito cambió bajo esta sugerencia. Verifica de nuevo.", {
             errorCode: "stale_citation",
             statusCode: 409,
           });
@@ -109,7 +109,7 @@ export default defineAction({
         )
         .returning({ id: reviewItems.id });
       if (!decided.length)
-        fail("Suggestion is already decided.", {
+        fail("Esta sugerencia ya fue decidida.", {
           errorCode: "already_decided",
           statusCode: 409,
         });

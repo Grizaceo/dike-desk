@@ -28,4 +28,4 @@ A decision proves only that it was made: it does not verify a citation or make a
 
 - `ambiguous`, `refused` and `stale` are not verified. They are reported as they come.
 - A citation that does not resolve in the corpus does not by itself prove that the provision does not exist.
-- Case law and scholarship do not go through the engine: they are checked against their source and stay `[VERIFICAR]` meanwhile.
+- Case law and scholarship do not go through the engine: they are checked against their source and stay `[VERIFICAR CITA]` meanwhile.
