@@ -381,17 +381,64 @@ export function statusFor(detail: DikeDetail): CitationStatus {
   return "refused";
 }
 
+// Unicode letters, numbers and marks. ASCII `\b` would treat "artículo" as a
+// boundary in the middle of the word and would treat "16" as a match inside
+// "161".
+const WORD_CHAR = /[\p{L}\p{N}\p{M}_]/u;
+
+function codePointBefore(body: string, index: number): string | null {
+  if (index <= 0) return null;
+  let prev = index - 1;
+  const trail = body.charCodeAt(prev);
+  if (trail >= 0xdc00 && trail <= 0xdfff && prev > 0) {
+    const lead = body.charCodeAt(prev - 1);
+    if (lead >= 0xd800 && lead <= 0xdbff) prev -= 1;
+  }
+  const codePoint = body.codePointAt(prev);
+  return codePoint === undefined ? null : String.fromCodePoint(codePoint);
+}
+
+function bounded(body: string, start: number, end: number) {
+  const before = codePointBefore(body, start);
+  if (before !== null && WORD_CHAR.test(before)) return false;
+  if (end >= body.length) return true;
+  const after = body.codePointAt(end);
+  return after === undefined || !WORD_CHAR.test(String.fromCodePoint(after));
+}
+
+function overlaps(
+  span: { start: number; end: number },
+  used: { start: number; end: number }[],
+) {
+  return used.some(
+    (other) => span.start < other.end && other.start < span.end,
+  );
+}
+
 /**
- * Locate each reported citation in the body, in order, so the editor can
- * highlight it. Returns -1 offsets when the raw text cannot be found.
+ * Locate each reported citation on a Unicode word boundary.
+ *
+ * Citations are walked in report order. Each one takes the earliest unused
+ * match of its raw text, which is its occurrence index. A span is never given
+ * to two citations. When no unused word-bounded match remains, the citation
+ * is unlocated (`-1`), and `decide-suggestion` rejects that span.
  */
 export function locate(body: string, raws: string[]) {
-  let cursor = 0;
+  const used: { start: number; end: number }[] = [];
   return raws.map((raw) => {
-    const at = raw ? body.indexOf(raw, cursor) : -1;
-    const start = at >= 0 ? at : raw ? body.indexOf(raw) : -1;
-    if (start < 0) return { start: -1, end: -1 };
-    cursor = start + raw.length;
-    return { start, end: start + raw.length };
+    if (!raw) return { start: -1, end: -1 };
+    let from = 0;
+    while (from <= body.length) {
+      const start = body.indexOf(raw, from);
+      if (start < 0) break;
+      const end = start + raw.length;
+      const span = { start, end };
+      if (bounded(body, start, end) && !overlaps(span, used)) {
+        used.push(span);
+        return span;
+      }
+      from = start + 1;
+    }
+    return { start: -1, end: -1 };
   });
 }

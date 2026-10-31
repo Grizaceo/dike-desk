@@ -668,4 +668,47 @@ describe("statusFor and locate", () => {
       "refused",
     );
   });
+
+  it("does not match artículo 16 inside artículo 161", async () => {
+    const { locate } = await load();
+    const body = "Según el artículo 161 y el artículo 16.";
+    expect(locate(body, ["artículo 16", "artículo 161"])).toEqual([
+      { start: 27, end: 38 },
+      { start: 9, end: 21 },
+    ]);
+    expect(body.slice(27, 38)).toBe("artículo 16");
+    expect(body.slice(9, 21)).toBe("artículo 161");
+  });
+
+  it("assigns each occurrence of a repeated raw once", async () => {
+    const { locate } = await load();
+    const body = "Véase el artículo 16.";
+    const start = body.indexOf("artículo 16");
+    expect(locate(body, ["artículo 16", "artículo 16"])).toEqual([
+      { start, end: start + "artículo 16".length },
+      { start: -1, end: -1 },
+    ]);
+  });
+
+  it("locates citations reported out of document order", async () => {
+    const { locate } = await load();
+    const body = "Según el artículo 161 y el artículo 16.";
+    expect(locate(body, ["artículo 161", "artículo 16"])).toEqual([
+      { start: 9, end: 21 },
+      { start: 27, end: 38 },
+    ]);
+  });
+
+  it("returns -1 when the raw is missing or not on a word boundary", async () => {
+    const { locate } = await load();
+    expect(locate("sin citas", ["artículo 16"])).toEqual([
+      { start: -1, end: -1 },
+    ]);
+    expect(locate("xartículo 16", ["artículo 16"])).toEqual([
+      { start: -1, end: -1 },
+    ]);
+    expect(locate("(artículo 16).", ["artículo 16"])).toEqual([
+      { start: 1, end: 12 },
+    ]);
+  });
 });
