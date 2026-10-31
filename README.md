@@ -137,7 +137,8 @@ lands there: a screenshot per step, `get-brief` JSON snapshots,
 given, and `summary.json` with all checks (verified counts, pack_hash,
 as_of, the thread id of each agent turn and whether they share one thread,
 the art. 60 raw/replacement and trailing-words check, suggestion states,
-signed key_id, verifier exit codes). Exit code is nonzero if a hard step
+the signature envelope's key_id (cryptographically checked only with --verifier),
+verifier exit codes). Exit code is nonzero if a hard step
 fails; soft findings are reported inside `summary.json`.
 
 ## Status

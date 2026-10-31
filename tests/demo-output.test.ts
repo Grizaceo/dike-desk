@@ -389,6 +389,21 @@ describe("JSON-in-text, escaped keys and artifact allowlist", () => {
     expect(redactText(text)).not.toContain(CANARY);
   });
 
+  it.each([
+    String.raw`{\"token\":\"${CANARY}\"}`,
+    String.raw`{\"apiKey\": \"${CANARY}\"}`,
+    String.raw`"{\"password\":\"${CANARY}\"}"`,
+    `{"set-cookie":["s=${CANARY}"]}`,
+  ])("redacts escaped sensitive values and header arrays: %s", (text) => {
+    expect(redactText(text)).not.toContain(CANARY);
+    expect(SECRET_PATTERN.test(text)).toBe(true);
+  });
+
+  it("redacts a JSON string nested inside another JSON string", () => {
+    const value = { str: JSON.stringify(JSON.stringify({ token: CANARY })) };
+    expect(JSON.stringify(redactValue(value))).not.toContain(CANARY);
+  });
+
   it("writeArtifact parses .json strings and redacts them recursively", async () => {
     const json = `{"\\u0063ookie":"opaque-${CANARY}","nested":[{"Authorization":"Basic ${CANARY}"}],"key_id":"0f3a9c"}`;
     await writeArtifact(out, "headers.json", json);

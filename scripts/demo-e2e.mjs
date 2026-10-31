@@ -582,7 +582,8 @@ try {
   if (!withCommitment) throw new Error("no commitment emitted");
   const commitmentData = withCommitment.brief.commitment;
   summary.commitment = {
-    signed: Boolean(commitmentData.signature),
+    signatureEnvelopePresent: Boolean(commitmentData.signature),
+    cryptographicallyVerified: null,
     key_id: commitmentData.signature?.key_id ?? null,
     algorithm: commitmentData.signature?.algorithm ?? null,
     pack_hash: commitmentData.commitment?.pack_hash ?? null,
@@ -591,8 +592,8 @@ try {
     total_citas: commitmentData.commitment?.total_citas ?? null,
   };
   hard(
-    "commitmentSigned",
-    summary.commitment.signed,
+    "signatureEnvelopePresent",
+    summary.commitment.signatureEnvelopePresent,
     `key_id ${summary.commitment.key_id}`,
   );
   await writeArtifact(OUT, "get-brief-after-commitment.json", withCommitment);
@@ -631,7 +632,10 @@ try {
         writeArtifact(
           OUT,
           outFile,
-          `command: python3 ${path.basename(VERIFIER)} ${files.join(" ")}\nexit: ${code}\n\n${stdout}${stderr}`,
+          `command: python3 ${path.basename(VERIFIER)} ${files.join(" ")}\nexit: ${code}\n\n${stdout}${stderr}`.replaceAll(
+            homedir(),
+            "~",
+          ),
           { maxChars: 200_000 },
         );
       try {
@@ -657,6 +661,8 @@ try {
     summary.verifierExitCode = pos.code;
     const verified =
       pos.code === 0 && /RESULTADO:\s*VERIFICADO/.test(pos.stdout ?? "");
+    summary.commitment.cryptographicallyVerified = verified;
+    soft("signatureCryptographicallyVerified", verified, `exit ${pos.code}`);
     hard("verifierVerified", verified, `exit ${pos.code}`);
 
     // Negative control: tamper one value; the signature must not verify.
@@ -675,6 +681,8 @@ try {
     );
     summary.verifierTamperedExitCode = neg.code;
     soft("verifierRejectsTampered", neg.code === 1, `exit ${neg.code}`);
+  } else {
+    soft("signatureCryptographicallyVerified", false, "no --verifier given");
   }
 
   // --- step 8: es-ES detail screenshot in a second context (view-only, no agent) ---
