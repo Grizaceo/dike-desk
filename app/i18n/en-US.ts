@@ -136,6 +136,7 @@ const messages = {
       'I accepted the suggestion for "{{citation}}". Verify the brief again and report what Diké says.',
     copy: "Copy",
     copySuccess: "Copied to clipboard",
+    copyFailed: "Could not copy to the clipboard.",
   },
   briefs: {
     title: "Briefs",

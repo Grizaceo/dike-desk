@@ -137,6 +137,7 @@ const messages = {
       "Acepté la sugerencia para «{{citation}}». Verifica de nuevo el escrito e informa lo que diga Diké.",
     copy: "Copiar",
     copySuccess: "Copiado al portapapeles",
+    copyFailed: "No se pudo copiar al portapapeles.",
   },
   briefs: {
     title: "Escritos",

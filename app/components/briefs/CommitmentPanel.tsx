@@ -78,9 +78,16 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       type="button"
-      onClick={async () => {
-        await navigator.clipboard.writeText(text);
-        toast.success(t("brief.copySuccess"));
+      onClick={() => {
+        const write = navigator.clipboard?.writeText(text);
+        if (!write) {
+          toast.error(t("brief.copyFailed"));
+          return;
+        }
+        void write.then(
+          () => toast.success(t("brief.copySuccess")),
+          () => toast.error(t("brief.copyFailed")),
+        );
       }}
       className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs font-medium opacity-60 hover:opacity-100"
     >
