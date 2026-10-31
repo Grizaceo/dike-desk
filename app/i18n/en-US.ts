@@ -122,6 +122,7 @@ const messages = {
     askAgentButton: "Send to agent",
     acceptButton: "Accept",
     rejectButton: "Reject",
+    showInText: "Show in text",
     acceptedAgentMessage:
       'I accepted the suggestion for "{{citation}}". Verify the brief again and report what Diké says.',
     copy: "Copy",

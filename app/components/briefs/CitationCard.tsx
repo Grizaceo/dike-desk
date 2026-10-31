@@ -33,12 +33,15 @@ export default function CitationCard({
   items,
   selected,
   onSelect,
+  onShowInText,
 }: {
   briefId: string;
   citation: Citation;
   items: ReviewItem[];
   selected: boolean;
   onSelect: () => void;
+  /** Scroll the inline mark back into view. Omitted when the mark is not rendered. */
+  onShowInText?: () => void;
 }) {
   const t = useT();
   const [comment, setComment] = useState("");
@@ -79,9 +82,11 @@ export default function CitationCard({
 
   return (
     <article
+      id={`citation-card-${citation.id}`}
+      tabIndex={-1}
       onClick={onSelect}
       className={cn(
-        "flex flex-col gap-2 rounded-xl border bg-card p-3",
+        "flex flex-col gap-2 rounded-xl border bg-card p-3 focus:outline-none focus:ring-2 focus:ring-ring",
         selected ? "border-ring" : "border-border",
       )}
     >
@@ -89,6 +94,20 @@ export default function CitationCard({
         <strong className="min-w-0 text-sm font-medium">{citation.raw}</strong>
         <StatusBadge status={citation.status} />
       </div>
+      {selected && onShowInText ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="self-start"
+          onClick={(event) => {
+            event.stopPropagation();
+            onShowInText();
+          }}
+        >
+          {t("brief.showInText")}
+        </Button>
+      ) : null}
       {citation.label ? (
         <p className="text-xs text-muted-foreground">{citation.label}</p>
       ) : null}

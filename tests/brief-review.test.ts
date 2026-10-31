@@ -36,6 +36,21 @@ function item(id: string, citationId: string | null, extra = {}): ReviewItem {
 const citations = [{ id: "c1" }, { id: "c2" }] as Pick<Citation, "id">[];
 const current = { currentVerification: true };
 
+function messageKeys(value: unknown, prefix = ""): string[] {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return Object.entries(value).flatMap(([key, child]) =>
+      messageKeys(child, prefix ? `${prefix}.${key}` : key),
+    );
+  }
+  return [prefix];
+}
+
+describe("i18n catalogs", () => {
+  it("keeps en-US and es-ES keys aligned", () => {
+    expect(messageKeys(esES).sort()).toEqual(messageKeys(enUS).sort());
+  });
+});
+
 describe("getActivityItems", () => {
   it("excludes items anchored to a current citation", () => {
     expect(

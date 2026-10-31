@@ -123,6 +123,7 @@ const messages = {
     askAgentButton: "Enviar al agente",
     acceptButton: "Aceptar",
     rejectButton: "Rechazar",
+    showInText: "Ver en el texto",
     acceptedAgentMessage:
       "Acepté la sugerencia para «{{citation}}». Verifica de nuevo el escrito e informa lo que diga Diké.",
     copy: "Copiar",

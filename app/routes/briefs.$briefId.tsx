@@ -36,11 +36,27 @@ function toastError(fallback: string) {
   return (error: unknown) => toast.error(actionErrorMessage(error) ?? fallback);
 }
 
+function scrollBehavior(): ScrollBehavior {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ? "auto"
+    : "smooth";
+}
+
+function scrollAndFocus(el: HTMLElement, block: ScrollLogicalPosition) {
+  el.scrollIntoView({ behavior: scrollBehavior(), block });
+  el.focus({ preventScroll: true });
+}
+
 export default function BriefRoute() {
   const { briefId = "" } = useParams();
   const t = useT();
   const { data, isPending } = useActionQuery("get-brief", { briefId });
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [cardFocus, setCardFocus] = useState<{
+    id: string;
+    nonce: number;
+  } | null>(null);
+  const focusNonce = useRef(0);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [editBase, setEditBase] = useState("");
@@ -78,15 +94,29 @@ export default function BriefRoute() {
     if (!scrollToCommitment || !data?.brief.commitment) return;
     const el = commitmentRef.current;
     if (!el) return;
-    const reduced = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    el.scrollIntoView({
-      behavior: reduced ? "auto" : "smooth",
-      block: "start",
-    });
+    el.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
     setScrollToCommitment(false);
   }, [scrollToCommitment, data?.brief.commitment]);
+
+  useEffect(() => {
+    if (!cardFocus) return;
+    const el = document.getElementById(`citation-card-${cardFocus.id}`);
+    if (!el) return;
+    scrollAndFocus(el, "nearest");
+    setCardFocus(null);
+  }, [cardFocus]);
+
+  function selectCitationMark(id: string) {
+    setSelectedId(id);
+    focusNonce.current += 1;
+    setCardFocus({ id, nonce: focusNonce.current });
+  }
+
+  function focusCitationMark(id: string) {
+    const el = document.getElementById(`citation-mark-${id}`);
+    if (!el) return;
+    scrollAndFocus(el, "center");
+  }
 
   const citations = data?.citations ?? [];
   const review = data?.review ?? [];
@@ -189,9 +219,10 @@ export default function BriefRoute() {
             {parts.map((part, index) =>
               part.citation ? (
                 <button
-                  key={index}
+                  key={part.citation.id}
+                  id={`citation-mark-${part.citation.id}`}
                   type="button"
-                  onClick={() => setSelectedId(part.citation!.id)}
+                  onClick={() => selectCitationMark(part.citation!.id)}
                   className={cn(
                     "rounded px-0.5 underline decoration-2 underline-offset-4",
                     STATUS_STYLES[part.citation.status].mark,
@@ -257,6 +288,12 @@ export default function BriefRoute() {
             items={getCitationItems(review, citation.id)}
             selected={selectedId === citation.id}
             onSelect={() => setSelectedId(citation.id)}
+            onShowInText={
+              !editing &&
+              parts.some((part) => part.citation?.id === citation.id)
+                ? () => focusCitationMark(citation.id)
+                : undefined
+            }
           />
         ))}
         {commitment ? (
