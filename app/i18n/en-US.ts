@@ -185,6 +185,26 @@ const messages = {
     noCitations: "No citations",
     noCorpus: "No corpus",
   },
+  legalPersonality: {
+    title: "Legal personality",
+    description:
+      "Guides what LexO prioritises when arguing. It does not change how citations are verified.",
+    eclectico: "Eclectic (default)",
+    eclecticoDescription:
+      "Methodological positivism: first the rule in force, properly identified; then explicit, weighed principles.",
+    positivista: "Legal positivist",
+    positivistaDescription:
+      "Formal source, hierarchy, literal wording and legal certainty first.",
+    iusnaturalista: "Natural law",
+    iusnaturalistaDescription:
+      "Dignity and essential rights as the yardstick for interpretation and limits.",
+    source:
+      "Based on Carlos Santiago Nino, Introducción al análisis del derecho, ch. I.",
+    saving: "Saving…",
+    saved: "Saved",
+    saveFailed: "Could not save",
+    loadFailed: "Could not load the legal personality",
+  },
   root: {
     commandActions: "Actions",
     commandAppearance: "Appearance",
