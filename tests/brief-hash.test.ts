@@ -14,7 +14,8 @@ import { BRIEF_NORMALIZATION } from "../shared/brief-text.js";
 // python3 -c 'import json,hashlib; c=json.load(open(f)); print(hashlib.sha256(
 //   json.dumps(c, ensure_ascii=False, sort_keys=True,
 //   separators=(",",":")).encode()).hexdigest())'
-// The fixture is real output of `dike constancia --json --emit-commitment`.
+// The fixture is real output of `dike constancia --json --emit-commitment`,
+// produced on the previous demo body (the commitment does not depend on it).
 const FIXTURE_COMMITMENT_HASH =
   "093651f072e78fa67fd32b53af6355bb5f7a43eefb66a63f77114df5fcb56b07";
 

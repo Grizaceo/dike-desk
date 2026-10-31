@@ -9,7 +9,7 @@ import { DEMO_BRIEF_BODY, DEMO_BRIEF_TITLE } from "../server/lib/demo-brief.js";
 
 export default defineAction({
   description:
-    "Create a brief (escrito) from pasted text. Pass demo=true to load the synthetic demo brief (fictitious parties, six citations, two of which must be refused).",
+    "Create a brief (escrito) from pasted text. Pass demo=true to load the synthetic demo brief (fictitious parties, six citations: four verified, one ambiguous, one refused).",
   schema: z.object({
     title: z.string().max(200).optional().describe("Brief title"),
     body: z.string().max(400_000).optional().describe("Brief text"),
