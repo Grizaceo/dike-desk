@@ -1,5 +1,5 @@
+import { fetchAgentEngineStatus } from "@agent-native/core/client/client-status-requests";
 import {
-  actionErrorMessage,
   useActionMutation,
   useActionQuery,
 } from "@agent-native/core/client/hooks";
@@ -30,15 +30,30 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  actionErrorText,
   bodySegments,
+  findUndetectedCitations,
   getActivityItems,
   getCitationItems,
   isMissingBriefError,
 } from "@/lib/brief-review";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@agent-native/toolkit/ui/alert-dialog";
 
-function toastError(fallback: string) {
-  return (error: unknown) => toast.error(actionErrorMessage(error) ?? fallback);
+function toastError(
+  t: (k: string, p?: Record<string, unknown>) => string,
+  fallbackKey: string,
+) {
+  return (error: unknown) =>
+    toast.error(actionErrorText(t, error, fallbackKey));
 }
 
 function scrollBehavior(): ScrollBehavior {
@@ -66,6 +81,28 @@ export default function BriefRoute() {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [editBase, setEditBase] = useState("");
+  const [asOf, setAsOf] = useState("");
+  const [asOfTouched, setAsOfTouched] = useState(false);
+  const [confirmPartial, setConfirmPartial] = useState(false);
+  const [engineStatus, setEngineStatus] = useState<{
+    configured?: boolean;
+    engine?: string;
+    model?: string;
+    openAiBaseUrlConfigured?: boolean;
+  } | null>(null);
+  useEffect(() => {
+    let live = true;
+    fetchAgentEngineStatus()
+      .then((status) => {
+        if (live) setEngineStatus(status as typeof engineStatus);
+      })
+      .catch(() => {
+        if (live) setEngineStatus({});
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   const verify = useActionMutation("verify-brief", {
     onSuccess: (result) =>
@@ -75,11 +112,11 @@ export default function BriefRoute() {
           total: result.meta.total_citas,
         }),
       ),
-    onError: toastError(t("brief.verifyFailed")),
+    onError: toastError(t, "brief.verifyFailed"),
   });
   const update = useActionMutation("update-brief", {
     onSuccess: () => setEditing(false),
-    onError: toastError(t("brief.saveFailed")),
+    onError: toastError(t, "brief.saveFailed"),
   });
   // The panel reads the commitment from get-brief, which every successful
   // mutation refetches; the server clears it whenever the text changes.
@@ -92,7 +129,7 @@ export default function BriefRoute() {
           : t("brief.committedUnsigned"),
       );
     },
-    onError: toastError(t("brief.commitFailed")),
+    onError: toastError(t, "brief.commitFailed"),
   });
   const commitmentRef = useRef<HTMLDivElement>(null);
   const [scrollToCommitment, setScrollToCommitment] = useState(false);
@@ -143,9 +180,7 @@ export default function BriefRoute() {
     if (isError && !isMissingBriefError(error)) {
       return (
         <main className="flex flex-col items-start gap-3 p-6 text-sm">
-          <p role="alert">
-            {actionErrorMessage(error) ?? t("brief.loadFailed")}
-          </p>
+          <p role="alert">{actionErrorText(t, error, "brief.loadFailed")}</p>
           <Button
             type="button"
             variant="outline"
@@ -171,6 +206,21 @@ export default function BriefRoute() {
   }
 
   const { brief } = data;
+  const meta = brief.meta as {
+    as_of?: string;
+    as_of_source?: string;
+    pack_hash?: string;
+    citas_verificadas?: number;
+    total_citas?: number;
+  } | null;
+  const chosenAsOf =
+    meta?.as_of_source === "abogado" || meta?.as_of_source === "agente"
+      ? meta.as_of
+      : undefined;
+  const asOfValue = asOfTouched ? asOf : (chosenAsOf ?? "");
+  const undetected = brief.meta
+    ? findUndetectedCitations(brief.body, citations)
+    : [];
   const commitment = brief.commitment as CommitmentData | null;
   const busy = verify.isPending || update.isPending || commit.isPending;
   const activity = getActivityItems(review, citations, {
@@ -293,33 +343,68 @@ export default function BriefRoute() {
       {/* Right: what the engine said, what the agent proposes, what the lawyer decided. */}
       <aside className="flex min-w-0 flex-col gap-3">
         <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-end gap-2">
             <Button
               disabled={busy || editing}
-              onClick={() => verify.mutate({ briefId })}
+              onClick={() =>
+                verify.mutate({
+                  briefId,
+                  ...(asOfValue ? { asOf: asOfValue } : {}),
+                })
+              }
             >
               <IconShieldCheck className="size-4" />
               {verify.isPending
                 ? t("brief.verifyProgress")
                 : t("brief.verifyButton")}
             </Button>
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor="brief-as-of"
+                className="text-xs text-muted-foreground"
+              >
+                {t("brief.asOfLabel")}
+              </label>
+              <input
+                id="brief-as-of"
+                type="date"
+                value={asOfValue}
+                max={santiagoToday()}
+                disabled={busy || editing}
+                onChange={(event) => {
+                  setAsOf(event.target.value);
+                  setAsOfTouched(true);
+                }}
+                title={t("brief.asOfHint")}
+                className="h-8 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+              />
+            </div>
             <Button
               variant="outline"
               disabled={busy || editing || !brief.verdict}
-              onClick={() => commit.mutate({ briefId })}
+              onClick={() =>
+                brief.verdict === "TODAS_VERIFICADAS"
+                  ? commit.mutate({ briefId })
+                  : setConfirmPartial(true)
+              }
             >
               <IconCertificate className="size-4" /> {t("brief.emitCommitment")}
             </Button>
           </div>
-          {brief.meta ? (
+          <p className="text-xs text-muted-foreground">{t("brief.asOfHint")}</p>
+          {meta ? (
             <p className="text-xs text-muted-foreground">
               {t("brief.metaVerified", {
-                verified: brief.meta.citas_verificadas,
-                total: brief.meta.total_citas,
+                verified: meta.citas_verificadas,
+                total: meta.total_citas,
               })}{" "}
               · {t("brief.metaCorpus")}{" "}
-              <code>{String(brief.meta.pack_hash).slice(0, 16)}</code> ·{" "}
-              {t("brief.metaAsOf", { date: brief.meta.as_of })}
+              <code>{String(meta.pack_hash).slice(0, 16)}</code> ·{" "}
+              {meta.as_of_source === "abogado"
+                ? t("brief.metaAsOfLawyer", { date: meta.as_of })
+                : meta.as_of_source === "agente"
+                  ? t("brief.metaAsOfAgent", { date: meta.as_of })
+                  : t("brief.metaAsOfEngine", { date: meta.as_of })}
             </p>
           ) : (
             <p className="text-xs text-muted-foreground">
@@ -329,7 +414,25 @@ export default function BriefRoute() {
           <p className="text-xs text-muted-foreground">
             {t("brief.metaChecked")}
           </p>
+          <PrivacyNote t={t} status={engineStatus} />
         </div>
+
+        {undetected.length > 0 ? (
+          <p
+            role="status"
+            className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm dark:border-amber-900 dark:bg-amber-950/40"
+          >
+            {t(
+              undetected.length === 1
+                ? "brief.undetectedOne"
+                : "brief.undetectedMany",
+              { count: undetected.length },
+            )}{" "}
+            <span className="font-mono text-xs">
+              {undetected.map((u) => u.text).join(" · ")}
+            </span>
+          </p>
+        ) : null}
 
         {citations.map((citation) => (
           <CitationCard
@@ -346,11 +449,17 @@ export default function BriefRoute() {
                 ? () => focusCitationMark(citation.id)
                 : undefined
             }
+            metaAsOf={meta?.as_of}
+            metaPackHash={meta?.pack_hash}
           />
         ))}
         {commitment ? (
           <div ref={commitmentRef}>
-            <CommitmentPanel data={commitment} />
+            <CommitmentPanel
+              data={commitment}
+              certificateCheck={brief.certificateCheck}
+              body={brief.body}
+            />
           </div>
         ) : null}
 
@@ -392,6 +501,79 @@ export default function BriefRoute() {
           </div>
         ) : null}
       </aside>
+
+      <AlertDialog open={confirmPartial} onOpenChange={setConfirmPartial}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("brief.partialTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("brief.partialBody", {
+                count: (meta?.total_citas ?? 0) - (meta?.citas_verificadas ?? 0),
+                total: meta?.total_citas ?? 0,
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={commit.isPending}>
+              {t("brief.partialCancel")}
+            </AlertDialogCancel>
+            <Button
+              disabled={commit.isPending}
+              onClick={() => {
+                setConfirmPartial(false);
+                commit.mutate({ briefId, confirmPartial: true });
+              }}
+            >
+              {t("brief.partialConfirm")}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
+  );
+}
+
+function santiagoToday() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Santiago",
+  }).format(new Date());
+}
+
+function PrivacyNote({
+  t,
+  status,
+}: {
+  t: (k: string, p?: Record<string, unknown>) => string;
+  status: {
+    configured?: boolean;
+    engine?: string;
+    model?: string;
+    openAiBaseUrlConfigured?: boolean;
+  } | null;
+}) {
+  if (!status)
+    return (
+      <p className="text-xs text-muted-foreground">{t("brief.privacyUnknown")}</p>
+    );
+  if (status.configured === false)
+    return (
+      <p className="text-xs text-muted-foreground">
+        {t("brief.privacyNotConfigured")}
+      </p>
+    );
+  if (status.configured !== true || (!status.engine && !status.model))
+    return (
+      <p className="text-xs text-muted-foreground">{t("brief.privacyUnknown")}</p>
+    );
+  return (
+    <p className="text-xs text-muted-foreground">
+      {t("brief.privacyConfigured", {
+        engine: status.engine ?? "",
+        model: status.model ?? "",
+      })}
+      {status.openAiBaseUrlConfigured ? (
+        <> {t("brief.privacyCustomEndpoint")}</>
+      ) : null}
+    </p>
   );
 }
