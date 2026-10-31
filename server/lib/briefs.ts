@@ -23,12 +23,21 @@ export async function requireBrief(
     )
     .limit(1);
   if (!brief)
-    fail("Brief not found.", { errorCode: "not_found", statusCode: 404 });
+    fail("No se encontró el escrito o el elemento.", {
+      errorCode: "not_found",
+      statusCode: 404,
+    });
   return brief;
 }
 
 export function requireUser(ctx: { userEmail?: string } | undefined) {
-  return ctx?.userEmail ?? fail("Sign in first.", { statusCode: 401 });
+  return (
+    ctx?.userEmail ??
+    fail("Inicia sesión primero.", {
+      errorCode: "unauthorized",
+      statusCode: 401,
+    })
+  );
 }
 
 // Comment author comes from who calls, never from the arguments: the app UI

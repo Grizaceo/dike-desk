@@ -44,12 +44,12 @@ export default defineAction({
         )
         .limit(1);
       if (!citation)
-        fail("Citation not found in this brief.", {
+        fail("No se encontró el escrito o el elemento.", {
           errorCode: "not_found",
           statusCode: 404,
         });
       if (citation.status === "stale")
-        fail("The brief changed since verification. Run verify-brief first.", {
+        fail("El escrito cambió bajo esta sugerencia. Verifica de nuevo.", {
           errorCode: "stale_citation",
           statusCode: 409,
         });

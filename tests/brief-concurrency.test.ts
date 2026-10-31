@@ -33,7 +33,12 @@ const RAW = "art. 161 CT";
 const BODY_A = `Invoca ${RAW} del mismo cuerpo.`;
 const BODY_B = "Texto distinto sin citas.";
 const FIRST_UPDATED_AT = "2026-01-01T00:00:00.000Z";
-const OLD_META = JSON.stringify({ pack_hash: "OLD", citas_verificadas: 1 });
+const OLD_META = JSON.stringify({
+  pack_hash: "OLD",
+  citas_verificadas: 1,
+  as_of: "2026-10-30",
+  as_of_source: "abogado",
+});
 const REPLACEMENT = "art. 161 del Código del Trabajo";
 
 function as<T>(userEmail: string, fn: () => T): T {

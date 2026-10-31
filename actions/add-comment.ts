@@ -37,7 +37,7 @@ export default defineAction({
           )
           .limit(1);
         if (!citation)
-          fail("Citation not found in this brief.", {
+          fail("No se encontró el escrito o el elemento.", {
             errorCode: "not_found",
             statusCode: 404,
           });

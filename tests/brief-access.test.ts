@@ -88,7 +88,11 @@ async function seed(db: TestDb) {
     title: "Escrito",
     body: BODY,
     verdict: "TODAS_VERIFICADAS",
-    verificationMeta: JSON.stringify({ pack_hash: "TEST_ONLY" }),
+    verificationMeta: JSON.stringify({
+      pack_hash: "TEST_ONLY",
+      as_of: "2026-10-30",
+      as_of_source: "abogado",
+    }),
     ownerEmail: OWNER,
     visibility: "private",
   });
@@ -352,7 +356,7 @@ describe("brief access by share role", () => {
         expect(error).toMatchObject({
           statusCode: 404,
           errorCode: "not_found",
-          message: "Suggestion not found.",
+          message: "No se encontró el escrito o el elemento.",
         });
     });
 
