@@ -8,7 +8,17 @@ export default defineAction({
     "Ask the Diké engine to emit a verification certificate for the brief's current text. Blocked while any citation is not verified (verify again) or none were detected. When the verdict is not TODAS_VERIFICADAS the certificate would be partial: you cannot confirm that — ask the lawyer to confirm it on screen with «Emitir certificado parcial», and never describe a partial certificate as clean. The certificate lists every detected citation with its status, names the corpus by pack_hash and the reference date, carries the brief's fingerprint, and is sealed only if the operator configured a content key. It does not certify the legal argument.",
   schema: z.object({
     briefId: z.string().describe("Brief id"),
+    expectedUpdatedAt: z
+      .string()
+      .optional()
+      .describe(
+        "The brief.updatedAt shown when the request was made; omit it (agent) — a stale UI revision gets 409 brief_changed.",
+      ),
   }),
-  run: async ({ briefId }, ctx) =>
-    emitCertificate(briefId, { partialConfirmed: false }, ctx),
+  run: async ({ briefId, expectedUpdatedAt }, ctx) =>
+    emitCertificate(
+      briefId,
+      { partialConfirmed: false, expectedUpdatedAt },
+      ctx,
+    ),
 });

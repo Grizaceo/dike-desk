@@ -134,13 +134,17 @@ export default function BriefRoute() {
         : t("brief.committedUnsigned"),
     );
   };
+  const onEmitError = (error: unknown) => {
+    toastError(t, "brief.commitFailed")(error);
+    void refetch();
+  };
   const commit = useActionMutation("emit-commitment", {
     onSuccess: onEmitted,
-    onError: toastError(t, "brief.commitFailed"),
+    onError: onEmitError,
   });
   const commitPartial = useActionMutation("emit-partial-certificate", {
     onSuccess: onEmitted,
-    onError: toastError(t, "brief.commitFailed"),
+    onError: onEmitError,
   });
   const [partialContext, setPartialContext] = useState<{
     updatedAt: string;
@@ -414,7 +418,7 @@ export default function BriefRoute() {
               }
               onClick={() =>
                 brief.verdict === "TODAS_VERIFICADAS"
-                  ? commit.mutate({ briefId })
+                  ? commit.mutate({ briefId, expectedUpdatedAt: brief.updatedAt })
                   : (setPartialContext({
                       updatedAt: brief.updatedAt,
                       count:

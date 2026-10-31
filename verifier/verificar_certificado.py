@@ -10,7 +10,7 @@ Comprueba:
   * si se entrega commitment.json, que su hash canónico coincide con
     certificado["commitment_hash"].
 
-NO comprueba el sello de integridad del commitment (eso es
+NO comprueba el sello de integridad de commitment.json (eso es
 verificar_tercero.py, que viene con el repositorio del motor Diké) ni el
 argumento jurídico del escrito.
 
@@ -123,21 +123,21 @@ def main(argv: list[str]) -> int:
                 Path(commitment_path).read_text(encoding="utf-8")
             )
         except UnicodeDecodeError:
-            return no_evaluable("el commitment no es UTF-8")
+            return no_evaluable("commitment.json no es UTF-8")
         except OSError as exc:
-            return no_evaluable(f"no se pudo leer el commitment ({exc})")
+            return no_evaluable(f"no se pudo leer commitment.json ({exc})")
         except json.JSONDecodeError as exc:
-            return no_evaluable(f"el commitment no es JSON válido ({exc})")
+            return no_evaluable(f"commitment.json no es JSON válido ({exc})")
         if not isinstance(commitment, dict):
-            return no_evaluable("el commitment no es un objeto JSON")
+            return no_evaluable("commitment.json no es un objeto JSON")
         if hash_canonico(commitment) == hash_esperado:
             print(
                 "COINCIDE: commitment_hash del certificado coincide con el "
-                "hash canónico del commitment entregado."
+                "hash canónico del commitment.json entregado."
             )
         else:
             print(
-                "NO COINCIDE: el commitment entregado no produce el "
+                "NO COINCIDE: el commitment.json entregado no produce el "
                 "commitment_hash del certificado."
             )
             coincide = False
@@ -145,7 +145,7 @@ def main(argv: list[str]) -> int:
     print(
         "certificado.json no está sellado: esta comprobación no prueba que el "
         "certificado sea auténtico ni quién lo emitió.\n"
-        "No comprobado: el sello de integridad del commitment (eso lo hace "
+        "No comprobado: el sello de integridad de commitment.json (eso lo hace "
         "verificar_tercero.py, del repositorio del motor Diké) ni el "
         "argumento jurídico del escrito."
     )

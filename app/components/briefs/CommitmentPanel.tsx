@@ -246,7 +246,7 @@ export default function CommitmentPanel({
               </p>
             ) : null}
             <DownloadLink
-              name="escrito-verificado.txt"
+              name="escrito-del-certificado.txt"
               label={t("commitment.downloadText")}
               content={normalizeBriefText(body)}
               mime="text/plain"

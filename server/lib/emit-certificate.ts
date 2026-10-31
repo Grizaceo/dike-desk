@@ -88,7 +88,7 @@ export async function emitCertificate(
   briefId: string,
   { partialConfirmed, expectedUpdatedAt }: {
     partialConfirmed: boolean;
-    expectedUpdatedAt?: string;
+    expectedUpdatedAt?: string | undefined;
   },
   ctx: ActionCtx,
 ) {

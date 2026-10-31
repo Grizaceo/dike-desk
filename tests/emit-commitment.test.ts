@@ -316,6 +316,19 @@ describe("emit-commitment", () => {
       );
     });
 
+    it("rejects a stale expectedUpdatedAt before the engine", async () => {
+      await expect(
+        asLawyer(() =>
+          emitCommitment.run(
+            { briefId: "b1", expectedUpdatedAt: "2000-01-01T00:00:00.000Z" },
+            CTX,
+          ),
+        ),
+      ).rejects.toMatchObject({ statusCode: 409, errorCode: "brief_changed" });
+      expect(holder.runConstancia).not.toHaveBeenCalled();
+      expect((await row()).commitmentJson).toBeNull();
+    });
+
     it("rejects a partial confirmation on a stale revision", async () => {
       await expect(
         asLawyer(() =>

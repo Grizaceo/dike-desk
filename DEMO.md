@@ -39,8 +39,8 @@ Duración objetivo: 3 a 4 minutos. Cifras: decir siempre «en este escrito sint�
 1. «Emitir certificado de verificación». Aparece el bloqueo: hay 1 cita sin verificar; el certificado será parcial y listará todas las citas.
 2. Confirmar «Emitir certificado parcial». El panel muestra: encabezado ámbar «Certificado parcial: 1 cita no verificada», todas las citas con su estado, la fecha de referencia elegida, el corpus `pack_hash` y la huella SHA-256 del texto del escrito, con «El texto actual del escrito coincide con esta huella».
 3. Si hay sello: «Sello de integridad». Decir: «El sello prueba que commitment.json no cambió; no cubre certificado.json, que lleva la huella del escrito. La llave es de demostración: no identifica a nadie y no es firma electrónica avanzada de la Ley 19.799. La firma del escrito sigue siendo la del abogado en la Oficina Judicial Virtual».
-4. Descargar `certificado.json`, `commitment.json` y el texto verificado, y en una terminal:
-   `python3 verifier/verificar_certificado.py certificado.json escrito-verificado.txt commitment.json` → COINCIDE.
+4. Descargar `certificado.json`, `commitment.json` y el texto del certificado, y en una terminal:
+   `python3 verifier/verificar_certificado.py certificado.json escrito-del-certificado.txt commitment.json` → COINCIDE.
    Cambiar una letra del texto y repetir → NO COINCIDE.
 5. Cierre: «Diké dice qué normas existen y están vigentes a la fecha que elegí, y deja una huella de este texto en el certificado, fuera del sello. Si la norma sirve, y si la cito bien, lo decido yo».
 

@@ -277,7 +277,7 @@ const messages = {
       "Ninguna cita quedó verificada: no hay nada que certificar.",
     not_verified: "Verifica el texto actual antes de emitir el certificado.",
     partial_needs_confirmation:
-      "Hay citas sin verificar: confirma la emisión parcial en la pantalla.",
+      "Ahora hay citas sin verificar. Revisa la versión actual; si quieres emitir igual, confirma la emisión parcial.",
     commitment_mismatch:
       "El resultado del motor no coincide con la verificación guardada. Verifica de nuevo antes de emitir.",
     commitment_not_emitted:
@@ -287,7 +287,7 @@ const messages = {
     already_decided: "Esta sugerencia ya fue decidida.",
     stale_citation: "El escrito cambió bajo esta sugerencia. Verifica de nuevo.",
     brief_changed:
-      "El escrito cambió mientras lo editabas. Recarga y vuelve a intentarlo.",
+      "El escrito cambió desde que lo abriste. Revisa la versión actual y vuelve a intentarlo.",
     dike_unavailable: "El motor Diké no está configurado en esta instalación.",
     dike_docker_unavailable:
       "No se pudo usar Docker para ejecutar el motor Diké.",
