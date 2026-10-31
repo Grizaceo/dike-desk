@@ -42,7 +42,7 @@ export default function CitationCard({
   selected: boolean;
   onSelect: () => void;
   /** Scroll the inline mark back into view. Omitted when the mark is not rendered. */
-  onShowInText?: () => void;
+  onShowInText?: (() => void) | undefined;
   /** Page is editing, verifying, saving, or emitting a commitment. */
   decisionsLocked?: boolean;
 }) {
