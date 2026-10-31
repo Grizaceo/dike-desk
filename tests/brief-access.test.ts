@@ -88,6 +88,7 @@ async function seed(db: TestDb) {
     title: "Escrito",
     body: BODY,
     verdict: "TODAS_VERIFICADAS",
+    verificationMeta: JSON.stringify({ pack_hash: "TEST_ONLY" }),
     ownerEmail: OWNER,
     visibility: "private",
   });
