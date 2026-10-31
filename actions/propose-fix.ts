@@ -3,7 +3,8 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb, schema } from "../server/db/index.js";
-import { requireBrief, requireUser } from "../server/lib/briefs.js";
+import { lockBrief } from "../server/lib/brief-write.js";
+import { requireUser } from "../server/lib/briefs.js";
 
 export default defineAction({
   description:
@@ -25,41 +26,43 @@ export default defineAction({
   }),
   run: async (args, ctx) => {
     const ownerEmail = requireUser(ctx);
-    const brief = await requireBrief(args.briefId);
-    const [citation] = await getDb()
-      .select({ id: schema.citations.id, status: schema.citations.status })
-      .from(schema.citations)
-      .where(
-        and(
-          eq(schema.citations.id, args.citationId),
-          eq(schema.citations.briefId, args.briefId),
-        ),
-      )
-      .limit(1);
-    if (!citation)
-      fail("Citation not found in this brief.", {
-        errorCode: "not_found",
-        statusCode: 404,
-      });
-    if (citation.status === "stale")
-      fail("The brief changed since verification. Run verify-brief first.", {
-        errorCode: "stale_citation",
-        statusCode: 409,
-      });
-
-    const item = {
-      id: crypto.randomUUID(),
-      briefId: args.briefId,
-      citationId: args.citationId,
-      kind: "suggestion" as const,
-      author: "agent" as const,
-      body: args.rationale,
-      replacement: args.replacement,
-      state: "pending" as const,
-      ownerEmail,
-      orgId: brief.orgId,
-    };
-    await getDb().insert(schema.reviewItems).values(item);
+    const item = await getDb().transaction(async (tx) => {
+      const brief = await lockBrief(tx, args.briefId, "commenter");
+      const [citation] = await tx
+        .select({ id: schema.citations.id, status: schema.citations.status })
+        .from(schema.citations)
+        .where(
+          and(
+            eq(schema.citations.id, args.citationId),
+            eq(schema.citations.briefId, args.briefId),
+          ),
+        )
+        .limit(1);
+      if (!citation)
+        fail("Citation not found in this brief.", {
+          errorCode: "not_found",
+          statusCode: 404,
+        });
+      if (citation.status === "stale")
+        fail("The brief changed since verification. Run verify-brief first.", {
+          errorCode: "stale_citation",
+          statusCode: 409,
+        });
+      const row = {
+        id: crypto.randomUUID(),
+        briefId: args.briefId,
+        citationId: args.citationId,
+        kind: "suggestion" as const,
+        author: "agent" as const,
+        body: args.rationale,
+        replacement: args.replacement,
+        state: "pending" as const,
+        ownerEmail,
+        orgId: brief.orgId,
+      };
+      await tx.insert(schema.reviewItems).values(row);
+      return row;
+    });
     return { id: item.id, state: item.state };
   },
 });

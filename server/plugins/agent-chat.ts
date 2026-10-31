@@ -13,7 +13,6 @@ const INITIAL_TOOL_NAMES = [
   "list-briefs",
   "create-brief",
   "get-brief",
-  "update-brief",
   "verify-brief",
   "propose-fix",
   "add-comment",

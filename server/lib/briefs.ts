@@ -4,13 +4,23 @@ import { and, eq } from "drizzle-orm";
 
 import { getDb, schema } from "../db/index.js";
 
-/** Load a brief the caller can see, or fail with 404. */
-export async function requireBrief(briefId: string) {
+export type BriefRole = "viewer" | "commenter" | "editor";
+
+/** Load a brief the caller holds at least `minRole` on, or fail with 404. */
+export async function requireBrief(
+  briefId: string,
+  minRole: BriefRole = "viewer",
+) {
   const { briefs, briefShares } = schema;
   const [brief] = await getDb()
     .select()
     .from(briefs)
-    .where(and(eq(briefs.id, briefId), accessFilter(briefs, briefShares)))
+    .where(
+      and(
+        eq(briefs.id, briefId),
+        accessFilter(briefs, briefShares, undefined, minRole),
+      ),
+    )
     .limit(1);
   if (!brief)
     fail("Brief not found.", { errorCode: "not_found", statusCode: 404 });

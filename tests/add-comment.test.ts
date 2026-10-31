@@ -1,3 +1,4 @@
+import { runWithRequestContext } from "@agent-native/core/server";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -10,30 +11,26 @@ vi.mock("../server/db/index.js", async () => {
   return { getDb: () => holder.db, schema };
 });
 
-// requireBrief uses accessFilter, which needs a request context; tests load by id.
-vi.mock("../server/lib/briefs.js", async (importOriginal) => {
-  const mod =
-    await importOriginal<typeof import("../server/lib/briefs.js")>();
-  const { fail } = await import("@agent-native/core/action");
-  const { eq } = await import("drizzle-orm");
-  const schema = await import("../server/db/schema.js");
-  return {
-    ...mod,
-    requireBrief: async (briefId: string) => {
-      const [brief] = await holder.db!
-        .select()
-        .from(schema.briefs)
-        .where(eq(schema.briefs.id, briefId))
-        .limit(1);
-      if (!brief)
-        fail("Brief not found.", { errorCode: "not_found", statusCode: 404 });
-      return brief;
-    },
-  };
-});
-
 const { default: addComment } = await import("../actions/add-comment.js");
 const { schema } = await import("../server/db/index.js");
+const { actionCallIntent, preparedCallNeedsApproval } =
+  await import("@agent-native/core/action");
+
+async function needsApproval(caller: string, args: Record<string, unknown>) {
+  const prepared = await actionCallIntent(addComment, args);
+  if (!prepared.valid) throw new Error("fixture arguments must be valid");
+  return preparedCallNeedsApproval(addComment, prepared, {
+    caller,
+    userEmail: "lawyer@test",
+  } as never);
+}
+
+function asLawyer<T>(fn: () => T): T {
+  return runWithRequestContext(
+    { userEmail: "lawyer@test", orgId: undefined },
+    fn,
+  );
+}
 
 async function seedBrief(db: TestDb) {
   await db.insert(schema.briefs).values({
@@ -41,7 +38,6 @@ async function seedBrief(db: TestDb) {
     title: "Escrito",
     body: "Cuerpo del escrito.",
     ownerEmail: "lawyer@test",
-    orgId: "o1",
   });
 }
 
@@ -55,9 +51,11 @@ describe("add-comment", () => {
   });
 
   it("records the caller, not an author argument: an agent tool cannot post as the lawyer", async () => {
-    const result = await addComment.run(
-      { briefId: "b1", body: "respuesta", author: "user" } as never,
-      { caller: "tool", userEmail: "lawyer@test" },
+    const result = await asLawyer(() =>
+      addComment.run(
+        { briefId: "b1", body: "respuesta", author: "user" } as never,
+        { caller: "tool", userEmail: "lawyer@test" },
+      ),
     );
     const [row] = await db
       .select()
@@ -67,9 +65,11 @@ describe("add-comment", () => {
   });
 
   it("records author 'user' when the signed-in app UI calls", async () => {
-    const result = await addComment.run(
-      { briefId: "b1", body: "comentario" },
-      { caller: "frontend", userEmail: "lawyer@test" },
+    const result = await asLawyer(() =>
+      addComment.run(
+        { briefId: "b1", body: "comentario" },
+        { caller: "frontend", userEmail: "lawyer@test" },
+      ),
     );
     const [row] = await db
       .select()
@@ -81,5 +81,39 @@ describe("add-comment", () => {
   it("no longer exposes an author parameter to callers", () => {
     const properties = addComment.tool.parameters?.properties ?? {};
     expect(properties).not.toHaveProperty("author");
+  });
+
+  describe("approval gate", () => {
+    const args = { briefId: "b1", body: "comentario" };
+
+    it("requires approval for plain http callers", async () => {
+      expect(await needsApproval("http", args)).toBe(true);
+    });
+
+    it.each(["tool", "mcp", "frontend"])(
+      "does not require approval for %s callers",
+      async (caller) => {
+        expect(await needsApproval(caller, args)).toBe(false);
+      },
+    );
+
+    it("ignores caller or author smuggled in the arguments", async () => {
+      const spoofed = { ...args, author: "user", caller: "frontend" };
+      expect(await needsApproval("http", spoofed)).toBe(true);
+    });
+
+    it("a spoofed author argument on a tool call is still recorded as the agent", async () => {
+      const result = await asLawyer(() =>
+        addComment.run(
+          { ...args, author: "user", caller: "frontend" } as never,
+          { caller: "tool", userEmail: "lawyer@test" },
+        ),
+      );
+      const [row] = await db
+        .select()
+        .from(schema.reviewItems)
+        .where(eq(schema.reviewItems.id, result.id));
+      expect(row.author).toBe("agent");
+    });
   });
 });

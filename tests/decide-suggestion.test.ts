@@ -1,3 +1,4 @@
+import { runWithRequestContext } from "@agent-native/core/server";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -10,31 +11,16 @@ vi.mock("../server/db/index.js", async () => {
   return { getDb: () => holder.db, schema };
 });
 
-vi.mock("../server/lib/briefs.js", async (importOriginal) => {
-  const mod =
-    await importOriginal<typeof import("../server/lib/briefs.js")>();
-  const { fail } = await import("@agent-native/core/action");
-  const { eq } = await import("drizzle-orm");
-  const schema = await import("../server/db/schema.js");
-  return {
-    ...mod,
-    requireBrief: async (briefId: string) => {
-      const [brief] = await holder.db!
-        .select()
-        .from(schema.briefs)
-        .where(eq(schema.briefs.id, briefId))
-        .limit(1);
-      if (!brief)
-        fail("Brief not found.", { errorCode: "not_found", statusCode: 404 });
-      return brief;
-    },
-  };
-});
-
-const { default: decideSuggestion } = await import(
-  "../actions/decide-suggestion.js"
-);
+const { default: decideSuggestion } =
+  await import("../actions/decide-suggestion.js");
 const { schema } = await import("../server/db/index.js");
+
+function asLawyer<T>(fn: () => T): T {
+  return runWithRequestContext(
+    { userEmail: "lawyer@test", orgId: undefined },
+    fn,
+  );
+}
 
 const CTX = { caller: "frontend", userEmail: "lawyer@test" } as const;
 
@@ -49,7 +35,6 @@ async function seed(db: TestDb) {
     body: BODY,
     verdict: "CON_PROBLEMAS",
     ownerEmail: "lawyer@test",
-    orgId: "o1",
   });
   const start1 = BODY.indexOf(RAW_1);
   const start2 = BODY.indexOf(RAW_2);
@@ -63,7 +48,6 @@ async function seed(db: TestDb) {
       end: start1 + RAW_1.length,
       status: "verified",
       ownerEmail: "lawyer@test",
-      orgId: "o1",
     },
     {
       id: "c2",
@@ -74,7 +58,6 @@ async function seed(db: TestDb) {
       end: start2 + RAW_2.length,
       status: "ambiguous",
       ownerEmail: "lawyer@test",
-      orgId: "o1",
     },
   ]);
   await db.insert(schema.reviewItems).values([
@@ -88,7 +71,6 @@ async function seed(db: TestDb) {
       replacement: "art. 159 del Código del Trabajo",
       state: "pending",
       ownerEmail: "lawyer@test",
-      orgId: "o1",
     },
     {
       id: "s2",
@@ -100,7 +82,6 @@ async function seed(db: TestDb) {
       replacement: "art. 161 del Código del Trabajo",
       state: "pending",
       ownerEmail: "lawyer@test",
-      orgId: "o1",
     },
   ]);
 }
@@ -123,9 +104,8 @@ describe("decide-suggestion", () => {
   });
 
   it("accepting a suggestion expires the other pending suggestions of the brief", async () => {
-    const result = await decideSuggestion.run(
-      { suggestionId: "s1", decision: "accepted" },
-      CTX,
+    const result = await asLawyer(() =>
+      decideSuggestion.run({ suggestionId: "s1", decision: "accepted" }, CTX),
     );
     expect(result).toEqual({ id: "s1", state: "accepted" });
 
@@ -148,23 +128,20 @@ describe("decide-suggestion", () => {
   });
 
   it("rejecting a suggestion leaves other pending suggestions pending", async () => {
-    await decideSuggestion.run(
-      { suggestionId: "s1", decision: "rejected" },
-      CTX,
+    await asLawyer(() =>
+      decideSuggestion.run({ suggestionId: "s1", decision: "rejected" }, CTX),
     );
     expect((await reviewItem(db, "s1")).state).toBe("rejected");
     expect((await reviewItem(db, "s2")).state).toBe("pending");
   });
 
   it("an expired suggestion cannot be decided (already_decided, 409)", async () => {
-    await decideSuggestion.run(
-      { suggestionId: "s1", decision: "accepted" },
-      CTX,
+    await asLawyer(() =>
+      decideSuggestion.run({ suggestionId: "s1", decision: "accepted" }, CTX),
     );
     await expect(
-      decideSuggestion.run(
-        { suggestionId: "s2", decision: "accepted" },
-        CTX,
+      asLawyer(() =>
+        decideSuggestion.run({ suggestionId: "s2", decision: "accepted" }, CTX),
       ),
     ).rejects.toMatchObject({
       errorCode: "already_decided",

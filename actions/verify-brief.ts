@@ -1,8 +1,13 @@
 import { defineAction } from "@agent-native/core/action";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb, schema } from "../server/db/index.js";
+import {
+  assertBriefSnapshot,
+  lockBrief,
+  nextBriefUpdatedAt,
+} from "../server/lib/brief-write.js";
 import { requireBrief, requireUser } from "../server/lib/briefs.js";
 import { locate, runConstancia, statusFor } from "../server/lib/dike.js";
 
@@ -14,32 +19,44 @@ export default defineAction({
   }),
   run: async ({ briefId }, ctx) => {
     const ownerEmail = requireUser(ctx);
-    const brief = await requireBrief(briefId);
+    const brief = await requireBrief(briefId, "editor");
+    const snapshot = { updatedAt: brief.updatedAt, body: brief.body };
     const { result } = await runConstancia(brief.body);
-    const spans = locate(
-      brief.body,
-      result.detalles.map((d) => d.cita_raw),
-    );
-    const rows = result.detalles.map((detail, index) => ({
-      id: crypto.randomUUID(),
-      briefId,
-      position: index,
-      raw: detail.cita_raw,
-      start: spans[index]?.start ?? -1,
-      end: spans[index]?.end ?? -1,
-      status: statusFor(detail),
-      resolution: detail.resolucion || null,
-      gid: detail.gid || null,
-      label: detail.cuerpo,
-      textSha256: detail.texto_hash,
-      sourceUrl: detail.fuente_url || null,
-      retrievedAt: detail.fecha_recuperacion || null,
-      ownerEmail,
-      orgId: brief.orgId,
-    }));
-    const now = new Date().toISOString();
 
-    await getDb().transaction(async (tx) => {
+    const rows = await getDb().transaction(async (tx) => {
+      const locked = await lockBrief(tx, briefId, "editor");
+      assertBriefSnapshot(locked, snapshot);
+      const spans = locate(
+        locked.body,
+        result.detalles.map((d) => d.cita_raw),
+      );
+      const rows = result.detalles.map((detail, index) => ({
+        id: crypto.randomUUID(),
+        briefId,
+        position: index,
+        raw: detail.cita_raw,
+        start: spans[index]?.start ?? -1,
+        end: spans[index]?.end ?? -1,
+        status: statusFor(detail),
+        resolution: detail.resolucion || null,
+        gid: detail.gid || null,
+        label: detail.cuerpo,
+        textSha256: detail.texto_hash,
+        sourceUrl: detail.fuente_url || null,
+        retrievedAt: detail.fecha_recuperacion || null,
+        ownerEmail: locked.ownerEmail,
+        orgId: locked.orgId,
+      }));
+      const now = new Date().toISOString();
+      await tx
+        .update(schema.reviewItems)
+        .set({ state: "expired", decidedAt: now })
+        .where(
+          and(
+            eq(schema.reviewItems.briefId, briefId),
+            eq(schema.reviewItems.state, "pending"),
+          ),
+        );
       await tx
         .delete(schema.citations)
         .where(eq(schema.citations.briefId, briefId));
@@ -54,7 +71,7 @@ export default defineAction({
             problemas: result.problemas,
           }),
           commitmentJson: null,
-          updatedAt: now,
+          updatedAt: nextBriefUpdatedAt(locked.updatedAt),
         })
         .where(eq(schema.briefs.id, briefId));
       await tx.insert(schema.reviewItems).values({
@@ -64,10 +81,10 @@ export default defineAction({
         author: "engine",
         body: `${result.meta.citas_verificadas}/${result.meta.total_citas} citations verified against corpus ${result.meta.pack_hash} (as of ${result.meta.as_of}).`,
         ownerEmail,
-        orgId: brief.orgId,
+        orgId: locked.orgId,
       });
+      return rows;
     });
-
     return {
       verdict: result.veredicto,
       message: result.mensaje,

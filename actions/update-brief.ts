@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb, schema } from "../server/db/index.js";
-import { requireBrief } from "../server/lib/briefs.js";
+import { lockBrief, nextBriefUpdatedAt } from "../server/lib/brief-write.js";
 
 export default defineAction({
   description:
@@ -13,6 +13,7 @@ export default defineAction({
     title: z.string().min(1).max(200).optional(),
     body: z.string().max(400_000).optional(),
   }),
+  uiOnly: true,
   mcpAnnotations: {
     readOnlyHint: false,
     destructiveHint: true,
@@ -21,21 +22,26 @@ export default defineAction({
   run: async ({ briefId, title, body }) => {
     if (title === undefined && body === undefined)
       fail("Nothing to update.", { errorCode: "empty_update" });
-    const brief = await requireBrief(briefId);
-    const bodyChanged = body !== undefined && body !== brief.body;
-    const now = new Date().toISOString();
-    await getDb().transaction(async (tx) => {
+    const bodyChanged = await getDb().transaction(async (tx) => {
+      const brief = await lockBrief(tx, briefId, "editor");
+      const changed = body !== undefined && body !== brief.body;
+      const now = new Date().toISOString();
       await tx
         .update(schema.briefs)
         .set({
           ...(title !== undefined ? { title } : {}),
-          ...(bodyChanged
-            ? { body, verdict: null, commitmentJson: null }
+          ...(changed
+            ? {
+                body,
+                verdict: null,
+                verificationMeta: null,
+                commitmentJson: null,
+              }
             : {}),
-          updatedAt: now,
+          updatedAt: nextBriefUpdatedAt(brief.updatedAt),
         })
         .where(eq(schema.briefs.id, briefId));
-      if (bodyChanged) {
+      if (changed) {
         await tx
           .update(schema.citations)
           .set({ status: "stale" })
@@ -50,6 +56,7 @@ export default defineAction({
             ),
           );
       }
+      return changed;
     });
     return { id: briefId, stale: bodyChanged };
   },
