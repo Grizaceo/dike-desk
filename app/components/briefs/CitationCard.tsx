@@ -34,6 +34,7 @@ export default function CitationCard({
   selected,
   onSelect,
   onShowInText,
+  decisionsLocked = false,
 }: {
   briefId: string;
   citation: Citation;
@@ -42,6 +43,8 @@ export default function CitationCard({
   onSelect: () => void;
   /** Scroll the inline mark back into view. Omitted when the mark is not rendered. */
   onShowInText?: () => void;
+  /** Page is editing, verifying, saving, or emitting a commitment. */
+  decisionsLocked?: boolean;
 }) {
   const t = useT();
   const [comment, setComment] = useState("");
@@ -152,7 +155,7 @@ export default function CitationCard({
               <div className="mt-2 flex gap-2">
                 <Button
                   size="sm"
-                  disabled={decide.isPending}
+                  disabled={decide.isPending || decisionsLocked}
                   onClick={() =>
                     decide.mutate(
                       { suggestionId: item.id, decision: "accepted" },
@@ -180,7 +183,7 @@ export default function CitationCard({
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={decide.isPending}
+                  disabled={decide.isPending || decisionsLocked}
                   onClick={() =>
                     decide.mutate({
                       suggestionId: item.id,

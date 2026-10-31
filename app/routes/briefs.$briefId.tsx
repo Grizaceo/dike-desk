@@ -302,6 +302,7 @@ export default function BriefRoute() {
             items={getCitationItems(review, citation.id)}
             selected={selectedId === citation.id}
             onSelect={() => setSelectedId(citation.id)}
+            decisionsLocked={busy || editing}
             onShowInText={
               !editing &&
               segments.some((part) => part.citation?.id === citation.id)
