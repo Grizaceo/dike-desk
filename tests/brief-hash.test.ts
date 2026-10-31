@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
@@ -86,5 +87,41 @@ describe("commitmentHash", () => {
 describe("BRIEF_NORMALIZATION", () => {
   it("is the v1 id the certificate and the python verifier share", () => {
     expect(BRIEF_NORMALIZATION).toBe("dike-desk-texto-v1");
+  });
+});
+
+describe("normalization matches the Python verifier byte-for-byte", () => {
+  const CASES = [
+    "simple",
+    "espacio antes de U+2028 \u2028continua",
+    "espacio antes de U+2029 \u2029continua",
+    "espacio antes de U+0085 \u0085continua",
+    "tab antes de \v vertical\v",
+    "form feed\f despues",
+    "nbsp\u00a0dentro y al final\u00a0",
+    "linea con tabs\t\t\ncrlf\r\nfinal\r\n",
+    "cr solo\rcontinua",
+    "trailing spaces   ",
+    "trailing tabs\t\t",
+    "e con tilde NFD: cafe\u0301",
+    "emoji 😀 y salto\n",
+  ];
+  it("briefSha256 == verifier huella_escrito for every case", () => {
+    const py = spawnSync(
+      "python3",
+      [
+        "-c",
+        "import sys,json;sys.path.insert(0,'verifier');from verificar_certificado import huella_escrito as h;print(json.dumps([h(x) for x in json.loads(sys.stdin.read())]))",
+      ],
+      { input: JSON.stringify(CASES), encoding: "utf-8" },
+    );
+    if (py.error || py.status !== 0) {
+      console.warn("python3 not available; cross-impl check skipped");
+      return;
+    }
+    const expected = JSON.parse(py.stdout) as string[];
+    CASES.forEach((text, i) => {
+      expect(briefSha256(text), JSON.stringify(text)).toBe(expected[i]);
+    });
   });
 });

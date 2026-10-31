@@ -8,6 +8,6 @@ export function normalizeBriefText(body: string) {
   return body
     .normalize("NFC")
     .replace(/\r\n?/g, "\n")
-    .replace(/[ \t]+$/gm, "")
+    .replace(/[ \t]+(?=\n)/g, "").replace(/[ \t]+$/, "")
     .replace(/\n+$/, "");
 }
