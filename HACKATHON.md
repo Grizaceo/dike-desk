@@ -9,7 +9,7 @@ with Agent-Native, public Clips demo, submission form.
 |---|---|---|
 | Agent-Native `chat` template | `npx @agent-native/core@0.222.2 create dike-desk --standalone --template chat` | App shell, auth, agent chat, action runtime |
 | Diké engine (`dike constancia`) | [Grizaceo/dike](https://github.com/Grizaceo/dike), built before the hackathon | Called unchanged as an external process; not vendored here |
-| Synthetic demo brief | `dike/docs/hackathon/escrito_demo.md` | Copied into `server/lib/demo-brief.ts` |
+| Synthetic demo case (dismissal for the company's needs) | Built during the hackathon from the legal review's case design; the dike repo's `escrito_demo.md` is no longer used | `server/lib/demo-brief.ts` |
 | Review-ledger idea | `review-graph` design in the author's LexO ecosystem | Concept only; no code copied |
 | Repair loop idea | `dike-shield` (Open Agent Hackathon 2026) | Concept only; no code copied |
 | LexO legal agent profiles and the agentic legal research methodology | The author's LexO workshop (Hermes profiles `lexo-lawyer`, `lexo-alpha` and its sub-agents), built before the hackathon | Adapted and generalized into `resources/`: instructions, six sub-agents, ten skills and the memory policy; no private data, code or dependencies copied |
@@ -60,5 +60,6 @@ prompt and the navigation wiring.
 - [x] English/Spanish UI copy through the template's i18n catalog (2026-10-30: brief screen, commitment panel, list page, status/verdict badges, sidebar link). The agent's own replies follow the model's language
 - [ ] Optional: suggest a corrected article through IndexO / the legal graph (retrieval only; Diké still decides)
 - [x] LexO legal team as agent resources (2026-10-31): instructions, six sub-agents, ten skills, layered memory policy, seeded from `resources/es/` with an English mirror
+- [x] Legal-review fixes (2026-10-31): brief fingerprint + offline certificate checker (`verifier/verificar_certificado.py`); lawyer-chosen reference date (`asOf`) with `as_of_source` and per-citation vigencia storage; partial-emission gate with lawyer-only UI confirmation; certificates list every detected citation and the integrity seal is presented as such (demo key, not an advanced electronic signature); Spanish legal copy, undetected-mention notice, engine reason sentences, privacy note and mapped error codes; agent prompt discloses same-model sub-agents and the pertinence rule; new synthetic demo case with a deliberate paraphrase error. Unit/integration tests updated (381 passing); the live agent run was not re-exercised (no model provider configured in this environment).
 - [ ] Polish, then record the public Clips demo (synthetic brief only; no private data)
 - [ ] Submit at builder.io/hackathon/submit
