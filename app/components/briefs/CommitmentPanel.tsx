@@ -56,14 +56,21 @@ const DIKE_REPO_VERIFIER_URL =
 const VERIFY_COMMAND =
   "python3 verificar_tercero.py commitment.json commitment.sig.json content-signing-key.pub";
 
-function downloadFile(name: string, content: string, mime = "application/json") {
+function downloadFile(
+  name: string,
+  content: string,
+  mime = "application/json",
+) {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = name;
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  a.remove();
+  // Revoking in the click turn cancels the download in some browsers.
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -82,11 +89,7 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-export default function CommitmentPanel({
-  data,
-}: {
-  data: CommitmentData;
-}) {
+export default function CommitmentPanel({ data }: { data: CommitmentData }) {
   const t = useT();
   const { commitment, signature, pubkey } = data;
   const isSigned = Boolean(signature);
@@ -108,7 +111,9 @@ export default function CommitmentPanel({
               </span>
             </>
           ) : (
-            <span className="text-xs text-muted-foreground">{t("commitment.unsignedBadge")}</span>
+            <span className="text-xs text-muted-foreground">
+              {t("commitment.unsignedBadge")}
+            </span>
           )}
         </div>
       </div>
@@ -126,20 +131,30 @@ export default function CommitmentPanel({
           </button>
         </div>
         <dl className="grid grid-cols-[auto_1fr] gap-1.5 text-xs">
-          <dt className="text-muted-foreground">{t("commitment.labelPackHash")}</dt>
+          <dt className="text-muted-foreground">
+            {t("commitment.labelPackHash")}
+          </dt>
           <dd className="font-mono">{commitment.pack_hash}</dd>
           <dt className="text-muted-foreground">{t("commitment.labelAsOf")}</dt>
           <dd>{commitment.as_of}</dd>
-          <dt className="text-muted-foreground">{t("commitment.labelConstanciaAt")}</dt>
+          <dt className="text-muted-foreground">
+            {t("commitment.labelConstanciaAt")}
+          </dt>
           <dd>{commitment.fecha_constancia}</dd>
-          <dt className="text-muted-foreground">{t("commitment.labelVerified")}</dt>
+          <dt className="text-muted-foreground">
+            {t("commitment.labelVerified")}
+          </dt>
           <dd>
             {commitment.citas_verificadas}/{commitment.total_citas}{" "}
             <span className="text-muted-foreground">
-              {t("commitment.labelRefused", { failures: commitment.citas_fallidas })}
+              {t("commitment.labelRefused", {
+                failures: commitment.citas_fallidas,
+              })}
             </span>
           </dd>
-          <dt className="text-muted-foreground">{t("commitment.labelScope")}</dt>
+          <dt className="text-muted-foreground">
+            {t("commitment.labelScope")}
+          </dt>
           <dd className="text-muted-foreground">{commitment.alcance}</dd>
         </dl>
 
@@ -157,7 +172,9 @@ export default function CommitmentPanel({
       {isSigned && (
         <div className="rounded-xl border border-border bg-card p-4 space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium">{t("commitment.sigEnvelope")}</h3>
+            <h3 className="text-sm font-medium">
+              {t("commitment.sigEnvelope")}
+            </h3>
             <button
               type="button"
               onClick={() =>
@@ -172,14 +189,24 @@ export default function CommitmentPanel({
             </button>
           </div>
           <dl className="grid grid-cols-[auto_1fr] gap-1.5 text-xs">
-            <dt className="text-muted-foreground">{t("commitment.labelKeyId")}</dt>
+            <dt className="text-muted-foreground">
+              {t("commitment.labelKeyId")}
+            </dt>
             <dd className="font-mono">{signature!.key_id}</dd>
-            <dt className="text-muted-foreground">{t("commitment.labelAlgorithm")}</dt>
+            <dt className="text-muted-foreground">
+              {t("commitment.labelAlgorithm")}
+            </dt>
             <dd>{signature!.algorithm}</dd>
-            <dt className="text-muted-foreground">{t("commitment.labelRole")}</dt>
+            <dt className="text-muted-foreground">
+              {t("commitment.labelRole")}
+            </dt>
             <dd>{signature!.role}</dd>
-            <dt className="text-muted-foreground">{t("commitment.labelCommitmentHash")}</dt>
-            <dd className="font-mono break-all">{signature!.commitment_hash}</dd>
+            <dt className="text-muted-foreground">
+              {t("commitment.labelCommitmentHash")}
+            </dt>
+            <dd className="font-mono break-all">
+              {signature!.commitment_hash}
+            </dd>
           </dl>
 
           {signature!.key_id !== PUBLISHED_DIKE_KEY_ID && (
@@ -205,10 +232,17 @@ export default function CommitmentPanel({
                 </dt>
                 <button
                   type="button"
-                  onClick={() => downloadFile("content-signing-key.pub", pubkey, "text/plain")}
+                  onClick={() =>
+                    downloadFile(
+                      "content-signing-key.pub",
+                      pubkey,
+                      "text/plain",
+                    )
+                  }
                   className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
                 >
-                  <IconDownload className="size-3" /> {t("commitment.downloadPub")}
+                  <IconDownload className="size-3" />{" "}
+                  {t("commitment.downloadPub")}
                 </button>
               </div>
               <pre className="overflow-x-auto rounded-md bg-muted/50 p-3 font-mono text-[10px] leading-tight">
@@ -232,7 +266,9 @@ export default function CommitmentPanel({
               {t("commitment.offlineDesc")}
             </p>
             <div className="space-y-2">
-              <p className="text-xs font-medium">{t("commitment.offlineStep1")}</p>
+              <p className="text-xs font-medium">
+                {t("commitment.offlineStep1")}
+              </p>
               <a
                 href={DIKE_REPO_VERIFIER_URL}
                 target="_blank"
@@ -243,7 +279,9 @@ export default function CommitmentPanel({
               </a>
             </div>
             <div className="space-y-2">
-              <p className="text-xs font-medium">{t("commitment.offlineStep2")}</p>
+              <p className="text-xs font-medium">
+                {t("commitment.offlineStep2")}
+              </p>
               <pre className="overflow-x-auto rounded-md bg-muted/50 p-3 font-mono text-[11px] leading-tight">
                 {VERIFY_COMMAND}
               </pre>
@@ -268,7 +306,8 @@ export default function CommitmentPanel({
             rel="noreferrer"
             className="inline-flex items-center gap-1 underline"
           >
-            {t("commitment.offlineDocs")} <IconExternalLink className="size-3" />
+            {t("commitment.offlineDocs")}{" "}
+            <IconExternalLink className="size-3" />
           </a>
         </p>
       </div>
