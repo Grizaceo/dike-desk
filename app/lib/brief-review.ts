@@ -112,6 +112,102 @@ export function isMissingBriefError(error: unknown) {
   return record.errorCode === "not_found" || record.status === 404;
 }
 
+// Statute-article mention: «artículo/articulo/artículos/art./arts.» plus a
+// number (optionally bis/ter), on Unicode word boundaries — like locate().
+const MENTION = /(?:art[íi]culos?|arts?\.)\s*\d+(?:\s*(?:bis|ter))?/giu;
+
+export type UndetectedCitation = { start: number; end: number; text: string };
+
+/**
+ * Mentions that look like statute citations but the engine did not report:
+ * any match overlapping a located citation span is already shown, and a match
+ * contained in an unlocated citation's raw is the same citation.
+ */
+export function findUndetectedCitations(
+  body: string,
+  citations: Pick<Citation, "raw" | "start" | "end">[],
+): UndetectedCitation[] {
+  const out: UndetectedCitation[] = [];
+  for (const match of body.matchAll(MENTION)) {
+    const start = match.index;
+    const end = start + match[0].length;
+    if (!isWordBounded(body, start, end)) continue;
+    const covered = citations.some((citation) =>
+      citation.start >= 0
+        ? start < citation.end && citation.start < end
+        : citation.raw.includes(match[0]),
+    );
+    if (!covered) out.push({ start, end, text: match[0] });
+  }
+  return out;
+}
+
+/** Ordered i18n keys for the engine's own codes; unknown codes yield none. */
+export function engineReasonKeys(
+  citation: Pick<
+    Citation,
+    "status" | "resolution" | "vigencia" | "historicalTextState"
+  >,
+) {
+  const keys: string[] = [];
+  if (citation.status !== "verified") {
+    if (citation.resolution === "AMBIGUOUS") keys.push("reason.ambiguous");
+    else if (citation.resolution === "UNRESOLVABLE")
+      keys.push("reason.unresolvable");
+    else if (citation.resolution === "RESOLVED")
+      keys.push("reason.resolvedNotVerified");
+  }
+  const vigencia = citation.vigencia;
+  if (vigencia === "IN_FORCE") keys.push("vigencia.inForce");
+  else if (vigencia === "OUT_OF_FORCE") keys.push("vigencia.outOfForce");
+  else if (vigencia === "UNKNOWN_BEFORE_SNAPSHOT")
+    keys.push("vigencia.unknownBeforeSnapshot");
+  else if (vigencia === "DESCONOCIDO") keys.push("vigencia.desconocido");
+  if (citation.historicalTextState === "HISTORICAL_TEXT_UNAVAILABLE")
+    keys.push("historical.unavailable");
+  return keys;
+}
+
+/** Error codes that have a catalog message under `errors.*` (copy.md). */
+export const KNOWN_ERROR_CODES = [
+  "not_found",
+  "not_verified",
+  "partial_needs_confirmation",
+  "partial_confirmation_ui_only",
+  "commitment_mismatch",
+  "commitment_not_emitted",
+  "commitment_hash_mismatch",
+  "already_decided",
+  "stale_citation",
+  "brief_changed",
+  "dike_unavailable",
+  "dike_docker_unavailable",
+  "dike_failed",
+  "dike_bad_output",
+  "brief_too_large",
+  "invalid_as_of",
+  "empty_update",
+] as const;
+
+/**
+ * Maps an action error to catalog text: known errorCode -> `errors.<code>`,
+ * anything else -> the caller's per-action fallback key. The raw server
+ * message is never shown.
+ */
+export function actionErrorText(
+  t: (key: string, params?: Record<string, unknown>) => string,
+  error: unknown,
+  fallbackKey: string,
+) {
+  const code = (error as { errorCode?: unknown } | null)?.errorCode;
+  if (
+    typeof code === "string" &&
+    (KNOWN_ERROR_CODES as readonly string[]).includes(code)
+  )
+    return t(`errors.${code}`);
+  return t(fallbackKey);
+}
+
 export function safeExternalUrl(url: string | null) {
   if (!url) return null;
   try {
