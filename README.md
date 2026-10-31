@@ -48,6 +48,7 @@ Browser (React, Agent-Native UI)          Agent chat (sidebar)
             Shared actions (actions/*.ts)
    list/create/get/update-brief · verify-brief · propose-fix
    decide-suggestion (uiOnly) · add-comment · emit-commitment
+   · emit-partial-certificate (uiOnly)
                        │
           ┌────────────┴─────────────┐
           ▼                          ▼
@@ -150,7 +151,7 @@ when they differ.
 script that works fully offline:
 
 ```bash
-python3 verifier/verificar_certificado.py certificado.json escrito-verificado.txt [commitment.json]
+python3 verifier/verificar_certificado.py certificado.json escrito-del-certificado.txt [commitment.json]
 # exit 0 = COINCIDE, 1 = NO COINCIDE, 2 = NO SE PUDO EVALUAR
 ```
 
@@ -222,7 +223,7 @@ node scripts/demo-e2e.mjs --out <dir> [--base http://localhost:8080] \
 `--out` is required and must be outside the repository — every artifact
 lands there: a screenshot per step, `get-brief` JSON snapshots,
 `transcript-<id>.txt` for every chat thread the run touched,
-`certificado.json`, `escrito-verificado.txt`, `commitment.json` /
+`certificado.json`, `escrito-del-certificado.txt`, `commitment.json` /
 `commitment.sig.json` / `content-signing-key.pub` when signed,
 `verifier.txt` (plus a tampered negative control) and `summary.json` with
 all checks. Exit code is nonzero if a hard step fails; soft findings are

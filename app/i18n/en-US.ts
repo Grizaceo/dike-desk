@@ -160,13 +160,13 @@ const messages = {
     partialConfirm: "Issue partial certificate",
     partialCancel: "Go back and review",
     privacyConfigured:
-      "Privacy: the Diké engine runs on this machine and offline. The agent sends the brief's text and your comments to its model provider: {{engine}} · {{model}}. Unless that model runs on your machine, the text leaves it.",
+      "Privacy: the Diké engine runs on this machine (with Docker, also with no network). The agent sends the brief's text and your comments to its model provider: {{engine}} · {{model}}. Unless that model runs on your machine, the text leaves it.",
     privacyCustomEndpoint:
       "A custom endpoint is in use (OPENAI_BASE_URL): check the agent's Settings to see which service it points to.",
     privacyNotConfigured:
-      "Privacy: the Diké engine runs on this machine and offline. The agent has no model provider configured.",
+      "Privacy: the Diké engine runs on this machine (with Docker, also with no network). The agent has no model provider configured.",
     privacyUnknown:
-      "Privacy: the Diké engine runs on this machine and offline. The agent sends the brief's text and your comments to its model provider; check which one in the agent's Settings.",
+      "Privacy: the Diké engine runs on this machine (with Docker, also with no network). The agent sends the brief's text and your comments to its model provider; check which one in the agent's Settings.",
   },
   briefs: {
     title: "Briefs",
@@ -194,7 +194,7 @@ const messages = {
       "The brief's current text does NOT match this fingerprint: this certificate does not correspond to the current text.",
     downloadCertificate: "Download certificado.json",
     downloadJson: "Download commitment.json",
-    downloadText: "Download the certificate's text (.txt)",
+    downloadText: "Download the certificate’s text (.txt)",
     downloadSig: "Download commitment.sig.json",
     downloadPub: "Download .pub",
     labelCommitmentHash: "Commitment fingerprint (commitment_hash, SHA-256)",
@@ -275,7 +275,7 @@ const messages = {
     nothing_verified: "No citation was verified: there is nothing to certify.",
     not_verified: "Verify the current text before issuing the certificate.",
     partial_needs_confirmation:
-      "There are unverified citations: confirm the partial issue on screen.",
+      "There are unverified citations now. Check the current version; if you still want to issue, confirm the partial certificate.",
     commitment_mismatch:
       "The engine result does not match the stored verification. Verify again before issuing.",
     commitment_not_emitted:
@@ -285,7 +285,7 @@ const messages = {
     already_decided: "This suggestion was already decided.",
     stale_citation: "The brief changed under this suggestion. Verify again.",
     brief_changed:
-      "The brief changed while you were editing. Reload and try again.",
+      "The brief changed since you opened it. Check the current version and try again.",
     dike_unavailable: "The Diké engine is not configured on this installation.",
     dike_docker_unavailable:
       "Docker could not be used to run the Diké engine.",

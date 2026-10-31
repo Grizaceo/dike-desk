@@ -688,8 +688,8 @@ try {
   }
   const certJson = await download(/certificado/i, "certificado.json");
   const escritoTxt = await download(
-    /escrito-verificado|verified text/i,
-    "escrito-verificado.txt",
+    /escrito-del-certificado|certificate.*text/i,
+    "escrito-del-certificado.txt",
   );
   let commitmentJson = null;
   try {
@@ -733,7 +733,7 @@ try {
       [
         "verifier/verificar_certificado.py",
         "certificado.json",
-        "escrito-verificado.txt",
+        "escrito-del-certificado.txt",
         ...(commitmentJson ? ["commitment.json"] : []),
       ],
       { cwd: OUT, maxBuffer: 4 * 1024 * 1024 },
