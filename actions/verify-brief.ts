@@ -4,25 +4,66 @@ import { z } from "zod";
 
 import { getDb, schema } from "../server/db/index.js";
 import { isoNow } from "../server/db/timestamps.js";
+import { parseAsOf } from "../server/lib/as-of.js";
 import {
   assertBriefSnapshot,
   lockBrief,
   nextBriefUpdatedAt,
 } from "../server/lib/brief-write.js";
 import { requireBrief, requireUser } from "../server/lib/briefs.js";
+import type { AsOfOrigen } from "../server/lib/certificate.js";
 import { locate, runConstancia, statusFor } from "../server/lib/dike.js";
+
+// Who chose the reference date: the lawyer in the UI, the agent on their
+// behalf, or the engine's own "today" when nobody chose.
+function storedAsOfChoice(
+  meta: string | null,
+): { asOf: string; source: "abogado" | "agente" } | undefined {
+  if (!meta) return undefined;
+  try {
+    const parsed = JSON.parse(meta) as {
+      as_of?: unknown;
+      as_of_source?: unknown;
+    };
+    const source = parsed.as_of_source;
+    if (
+      (source === "abogado" || source === "agente") &&
+      typeof parsed.as_of === "string"
+    )
+      return { asOf: parsed.as_of, source };
+  } catch {
+    // A stored meta we cannot read behaves as "no chosen date".
+  }
+  return undefined;
+}
 
 export default defineAction({
   description:
     "Run the Diké engine on the brief's current text and replace its citation list with the engine's verdicts. Diké verifies identity, text integrity and that the provision was in force on the reference date; it does NOT certify that the provision supports the argument. Report refused and ambiguous citations with the engine's reason; never call them verified.",
   schema: z.object({
     briefId: z.string().describe("Brief id"),
+    asOf: z
+      .string()
+      .optional()
+      .describe(
+        "Reference date for vigencia (AAAA-MM-DD), e.g. the date of the facts. Omit to keep the date chosen before, or to let the engine use today.",
+      ),
   }),
-  run: async ({ briefId }, ctx) => {
+  run: async ({ briefId, asOf }, ctx) => {
     const ownerEmail = requireUser(ctx);
     const brief = await requireBrief(briefId, "editor");
     const snapshot = { updatedAt: brief.updatedAt, body: brief.body };
-    const { result } = await runConstancia(brief.body);
+    let engineAsOf: string | undefined;
+    let asOfSource: AsOfOrigen;
+    if (asOf !== undefined) {
+      engineAsOf = parseAsOf(asOf);
+      asOfSource = ctx?.caller === "frontend" ? "abogado" : "agente";
+    } else {
+      const stored = storedAsOfChoice(brief.verificationMeta);
+      engineAsOf = stored?.asOf;
+      asOfSource = stored?.source ?? "motor (fecha de hoy)";
+    }
+    const { result } = await runConstancia(brief.body, { asOf: engineAsOf });
 
     const rows = await getDb().transaction(async (tx) => {
       const locked = await lockBrief(tx, briefId, "editor");
@@ -63,6 +104,8 @@ export default defineAction({
           status: statusFor(detail),
           resolution: detail.resolucion || null,
           gid: detail.gid || null,
+          vigencia: detail.vigencia ?? null,
+          historicalTextState: detail.estado_texto_historico ?? null,
           label: detail.cuerpo ?? null,
           textSha256: detail.texto_hash ?? null,
           sourceUrl: detail.fuente_url || null,
@@ -91,6 +134,7 @@ export default defineAction({
           verdict: result.veredicto,
           verificationMeta: JSON.stringify({
             ...result.meta,
+            as_of_source: asOfSource,
             alcance: result.alcance,
             problemas: result.problemas,
           }),
@@ -103,7 +147,7 @@ export default defineAction({
         briefId,
         kind: "agent_note",
         author: "engine",
-        body: `${result.meta.citas_verificadas}/${result.meta.total_citas} citations verified against corpus ${result.meta.pack_hash} (as of ${result.meta.as_of}).`,
+        body: `Diké: ${result.meta.citas_verificadas} de ${result.meta.total_citas} citas detectadas existen y están vigentes al ${result.meta.as_of} (corpus ${result.meta.pack_hash}).`,
         ownerEmail,
         orgId: locked.orgId,
         createdAt: now,
@@ -122,6 +166,7 @@ export default defineAction({
         label: r.label,
       })),
       meta: result.meta,
+      asOfSource,
     };
   },
 });

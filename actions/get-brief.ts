@@ -35,6 +35,8 @@ export default defineAction({
           end: citations.end,
           status: citations.status,
           resolution: citations.resolution,
+          vigencia: citations.vigencia,
+          historicalTextState: citations.historicalTextState,
           label: citations.label,
           textSha256: citations.textSha256,
           sourceUrl: citations.sourceUrl,

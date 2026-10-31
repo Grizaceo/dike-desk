@@ -51,6 +51,11 @@ export const citations = pgTable("citations", {
   status: text("status", { enum: CITATION_STATUSES }).notNull(),
   resolution: text("resolution"),
   gid: text("gid"),
+  // Engine's machine-readable vigencia code (IN_FORCE, OUT_OF_FORCE,
+  // UNKNOWN_BEFORE_SNAPSHOT, ...) and historical-text availability,
+  // kept verbatim for the certificate and the cards.
+  vigencia: text("vigencia"),
+  historicalTextState: text("historical_text_state"),
   label: text("label"),
   textSha256: text("text_sha256"),
   sourceUrl: text("source_url"),

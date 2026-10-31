@@ -344,7 +344,7 @@ describe("runConstancia", () => {
         errorCode: "dike_failed",
         statusCode: 502,
       });
-      expect(error.message).toBe("Diké engine failed (exit 2).");
+      expect(error.message).toBe("El motor Diké falló. Inténtalo de nuevo.");
       expect(JSON.stringify(errorLog.mock.calls)).not.toContain(CANARY);
     });
 
@@ -420,6 +420,62 @@ describe("runConstancia", () => {
       });
       expect(parsed.meta).not.toHaveProperty("documento");
       expect(parsed.meta).not.toHaveProperty("origen");
+    });
+
+    it("passes --as-of to the engine when a reference date is given", async () => {
+      const matching = JSON.parse(ENGINE_JSON);
+      matching.meta.as_of = "2026-10-15";
+      engine({ stdout: ROOTLESS }, () => ({ stdout: JSON.stringify(matching) }));
+      const { runConstancia } = await load();
+      const { result } = await runConstancia(BODY, { asOf: "2026-10-15" });
+      expect(result.meta.as_of).toBe("2026-10-15");
+      const [call] = runCalls();
+      const index = call.args.indexOf("--as-of");
+      expect(index).toBeGreaterThan(-1);
+      expect(call.args[index + 1]).toBe("2026-10-15");
+    });
+
+    it("rejects a malformed as-of before calling the engine", async () => {
+      engine({ stdout: ROOTLESS }, () => undefined);
+      const { runConstancia } = await load();
+      await expect(
+        runConstancia(BODY, { asOf: "15-10-2026" }),
+      ).rejects.toMatchObject({ errorCode: "invalid_as_of", statusCode: 400 });
+      expect(runCalls()).toHaveLength(0);
+    });
+
+    it("rejects the run when the engine reports a different as_of", async () => {
+      // ENGINE_JSON reports as_of 2026-10-30; we asked for 2026-10-15.
+      engine({ stdout: ROOTLESS }, () => undefined);
+      const { runConstancia } = await load();
+      await expect(
+        runConstancia(BODY, { asOf: "2026-10-15" }),
+      ).rejects.toMatchObject({ errorCode: "dike_bad_output" });
+    });
+
+    it("accepts the new vigencia detail fields as nullish", async () => {
+      const result = JSON.parse(ENGINE_JSON);
+      result.detalles = [
+        {
+          cita_raw: "art. 1",
+          estado: "VERIFICADA",
+          vigencia: "IN_FORCE",
+          vigencia_legible: "vigente",
+          estado_texto_historico: "CURRENT_VERSION_APPLIES",
+        },
+        { cita_raw: "art. 2", estado: "FALLO" },
+      ];
+      result.meta.total_citas = 2;
+      result.meta.citas_verificadas = 1;
+      result.meta.citas_fallidas = 1;
+      engine({ stdout: ROOTLESS }, () => ({ stdout: JSON.stringify(result) }));
+      const { runConstancia } = await load();
+      const { result: parsed } = await runConstancia(BODY);
+      expect(parsed.detalles[0].vigencia).toBe("IN_FORCE");
+      expect(parsed.detalles[0].estado_texto_historico).toBe(
+        "CURRENT_VERSION_APPLIES",
+      );
+      expect(parsed.detalles[1].vigencia).toBeUndefined();
     });
 
     it("normalizes missing counters and accepts nullish detail fields", async () => {
