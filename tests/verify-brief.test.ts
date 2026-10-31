@@ -164,6 +164,25 @@ describe("verify-brief as_of (RJ-03/RJ-21)", () => {
     expect(holder.runConstancia).not.toHaveBeenCalled();
   });
 
+  it("resetAsOf ignores the stored choice and uses the engine default", async () => {
+    await db.update(schema.briefs).set({
+      verdict: "TODAS_VERIFICADAS",
+      verificationMeta: JSON.stringify({
+        pack_hash: "P1",
+        as_of: "2026-10-15",
+        as_of_source: "abogado",
+      }),
+    }).where(eq(schema.briefs.id, "b1"));
+    const result = await asLawyer(() =>
+      verifyBrief.run({ briefId: "b1", resetAsOf: true }, CTX),
+    );
+    expect(result.asOfSource).toBe("motor (fecha de hoy)");
+    const opts = holder.runConstancia.mock.calls[0]![1] as {
+      asOf?: string;
+    };
+    expect(opts.asOf).toBeUndefined();
+  });
+
   it("writes the engine note in Spanish with as_of and pack_hash", async () => {
     await asLawyer(() =>
       verifyBrief.run({ briefId: "b1", asOf: "2026-10-15" }, CTX),
@@ -212,3 +231,13 @@ describe("verify-brief persists vigencia (RJ-11)", () => {
   });
 });
 
+
+describe("verify-brief needsApproval (proven-UI gate)", () => {
+  it("requires approval for an unproven caller only when asOf is set", () => {
+    const approval = verifyBrief.needsApproval!;
+    expect(approval({ asOf: "2026-10-15" }, { caller: "http" })).toBe(true);
+    expect(approval({ asOf: "2026-10-15" }, { caller: "frontend" })).toBe(false);
+    expect(approval({ asOf: "2026-10-15" }, { caller: "tool" })).toBe(false);
+    expect(approval({ briefId: "b1" }, { caller: "http" })).toBe(false);
+  });
+});

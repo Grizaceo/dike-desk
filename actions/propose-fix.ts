@@ -8,6 +8,7 @@ import { lockBrief } from "../server/lib/brief-write.js";
 import { commentAuthor, requireUser } from "../server/lib/briefs.js";
 
 export default defineAction({
+  needsApproval: (_args, ctx) => ctx?.caller === "http",
   description:
     "Propose replacing one citation's exact text (e.g. 'artículo 60' -> 'artículo 60 del Código del Trabajo', or withdrawing it). Creates a pending suggestion the lawyer accepts or rejects in the UI; it does not change the brief. After acceptance, run verify-brief: a proposal is never evidence that the new citation exists.",
   schema: z.object({

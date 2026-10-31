@@ -181,7 +181,7 @@ export default function CitationCard({
                 <em>{t("brief.withdraw")}</em>
               )}
             </p>
-            <p className="mt-1 text-muted-foreground">{item.body}</p>
+            <p className="mt-1 text-muted-foreground">{item.body === "accepted" ? t("brief.statusAccepted") : item.body === "rejected" ? t("brief.statusRejected") : item.body}</p>
             {item.state === "pending" ? (
               <div className="mt-2 flex gap-2">
                 <Button
@@ -236,7 +236,7 @@ export default function CitationCard({
             <span className="font-medium">
               <ReviewAuthor author={item.author} />:
             </span>{" "}
-            {item.body}
+            {item.body === "accepted" ? t("brief.statusAccepted") : item.body === "rejected" ? t("brief.statusRejected") : item.body}
           </p>
         ),
       )}

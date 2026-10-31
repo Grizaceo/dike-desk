@@ -263,6 +263,13 @@ describe("brief access by share role", () => {
   });
 
   describe("propose-fix", () => {
+    it("requires approval for an unproven caller", () => {
+      const approval = proposeFix.needsApproval!;
+      expect(approval({}, { caller: "http" })).toBe(true);
+      expect(approval({}, { caller: "frontend" })).toBe(false);
+      expect(approval({}, { caller: "tool" })).toBe(false);
+    });
+
     const args = {
       briefId: "b1",
       citationId: "c1",

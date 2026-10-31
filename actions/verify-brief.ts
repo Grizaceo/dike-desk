@@ -38,6 +38,9 @@ function storedAsOfChoice(
 }
 
 export default defineAction({
+  needsApproval: (args, ctx) =>
+    (args as { asOf?: string; resetAsOf?: boolean }).asOf !== undefined &&
+    ctx?.caller === "http",
   description:
     "Run the Diké engine on the brief's current text and replace its citation list with the engine's verdicts. Diké verifies identity, text integrity and that the provision was in force on the reference date; it does NOT certify that the provision supports the argument. Report refused and ambiguous citations with the engine's reason; never call them verified.",
   schema: z.object({
@@ -48,14 +51,23 @@ export default defineAction({
       .describe(
         "Reference date for vigencia (AAAA-MM-DD), e.g. the date of the facts. Omit to keep the date chosen before, or to let the engine use today.",
       ),
+    resetAsOf: z
+      .boolean()
+      .optional()
+      .describe(
+        "true -> ignore any previously chosen date and use the engine default (today)",
+      ),
   }),
-  run: async ({ briefId, asOf }, ctx) => {
+  run: async ({ briefId, asOf, resetAsOf }, ctx) => {
     const ownerEmail = requireUser(ctx);
     const brief = await requireBrief(briefId, "editor");
     const snapshot = { updatedAt: brief.updatedAt, body: brief.body };
     let engineAsOf: string | undefined;
     let asOfSource: AsOfOrigen;
-    if (asOf !== undefined) {
+    if (resetAsOf) {
+      engineAsOf = undefined;
+      asOfSource = "motor (fecha de hoy)";
+    } else if (asOf !== undefined) {
       engineAsOf = parseAsOf(asOf);
       asOfSource = ctx?.caller === "frontend" ? "abogado" : "agente";
     } else {

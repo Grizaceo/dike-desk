@@ -126,7 +126,7 @@ export default function BriefRoute() {
   });
   // The panel reads the commitment from get-brief, which every successful
   // mutation refetches; the server clears it whenever the text changes.
-  const commit = useActionMutation("emit-commitment", {
+  const commit = useActionMutation("emit-partial-certificate", {
     onSuccess: (result) => {
       setScrollToCommitment(true);
       toast.success(
@@ -355,7 +355,11 @@ export default function BriefRoute() {
               onClick={() =>
                 verify.mutate({
                   briefId,
-                  ...(asOfValue ? { asOf: asOfValue } : {}),
+                  ...(asOfValue
+                    ? { asOf: asOfValue }
+                    : asOfTouched
+                      ? { resetAsOf: true }
+                      : {}),
                 })
               }
             >
@@ -387,7 +391,7 @@ export default function BriefRoute() {
             </div>
             <Button
               variant="outline"
-              disabled={busy || editing || !brief.verdict}
+              disabled={busy || editing || !brief.verdict || !meta?.total_citas}
               onClick={() =>
                 brief.verdict === "TODAS_VERIFICADAS"
                   ? commit.mutate({ briefId })
@@ -500,7 +504,11 @@ export default function BriefRoute() {
                       · <SuggestionState state={item.state} />{" "}
                     </>
                   ) : null}
-                  {item.body}
+                  {item.body === "accepted"
+                            ? t("brief.statusAccepted")
+                            : item.body === "rejected"
+                              ? t("brief.statusRejected")
+                              : item.body}
                 </li>
               ))}
             </ul>
@@ -527,7 +535,7 @@ export default function BriefRoute() {
               disabled={commit.isPending}
               onClick={() => {
                 setConfirmPartial(false);
-                commit.mutate({ briefId, confirmPartial: true });
+                commit.mutate({ briefId });
               }}
             >
               {t("brief.partialConfirm")}

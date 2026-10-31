@@ -22,6 +22,8 @@ vi.mock("../server/lib/dike.js", async (importOriginal) => {
 
 const { default: emitCommitment } =
   await import("../actions/emit-commitment.js");
+const { default: emitPartialCertificate } =
+  await import("../actions/emit-partial-certificate.js");
 const { default: getBrief } = await import("../actions/get-brief.js");
 const { schema } = await import("../server/db/index.js");
 
@@ -288,7 +290,7 @@ describe("emit-commitment", () => {
         emitCommitment.run({ briefId: "b1" }, CTX),
       );
       expect(result.signed).toBe(true);
-      expect(result.certificate!.sellado).toBe(true);
+      expect(result.certificate!.commitment_sellado).toBe(true);
       expect(result.certificate!.commitment_hash).toBe(
         signature.commitment_hash,
       );
@@ -325,24 +327,15 @@ describe("emit-commitment", () => {
       expect((await row()).commitmentJson).toBeNull();
     });
 
-    it("rejects a confirmation that does not come from the UI", async () => {
-      await expect(
-        asLawyer(() =>
-          emitCommitment.run(
-            { briefId: "b1", confirmPartial: true },
-            AGENT_CTX,
-          ),
-        ),
-      ).rejects.toMatchObject({
-        statusCode: 403,
-        errorCode: "partial_confirmation_ui_only",
-      });
-      expect(holder.runConstancia).not.toHaveBeenCalled();
+    it("keeps partial confirmation behind the proven-UI action", () => {
+      expect(emitPartialCertificate.uiOnly).toBe(true);
+      // The agent-facing action has no confirmPartial arg at all: a CON_PROBLEMAS
+      // brief always gets 409 partial_needs_confirmation.
     });
 
     it("emits a partial certificate listing every citation when the lawyer confirms", async () => {
       const result = await asLawyer(() =>
-        emitCommitment.run({ briefId: "b1", confirmPartial: true }, CTX),
+        emitPartialCertificate.run({ briefId: "b1" }, CTX),
       );
       expect(result.partial).toBe(true);
       const cert = result.certificate!;
@@ -371,6 +364,45 @@ describe("emit-commitment", () => {
     });
   });
 
+  describe("emit-partial on a fully verified brief", () => {
+    it("emits normally: parcial false and no confirmation row", async () => {
+      await seed("TODAS_VERIFICADAS", [
+        { id: "c1", raw: RAW_OK, status: "verified" },
+      ]);
+      holder.runConstancia.mockResolvedValue(
+        engine({
+          veredicto: "TODAS_VERIFICADAS",
+          detalles: [detail(RAW_OK, "VERIFICADA")],
+        }),
+      );
+      const result = await asLawyer(() =>
+        emitPartialCertificate.run({ briefId: "b1" }, CTX),
+      );
+      expect(result.partial).toBe(false);
+      expect(result.certificate!.parcial).toBe(false);
+      expect(result.certificate!.emision_parcial_confirmada).toBe(false);
+      const decisions = (
+        await db.select().from(schema.reviewItems)
+      ).filter((r) => r.kind === "decision");
+      expect(decisions).toHaveLength(0);
+    });
+  });
+
+  describe("SIN_CITAS", () => {
+    it("rejects both actions with no_citations", async () => {
+      await seed("SIN_CITAS", []);
+      for (const action of [emitCommitment, emitPartialCertificate]) {
+        await expect(
+          asLawyer(() => action.run({ briefId: "b1" }, CTX)),
+        ).rejects.toMatchObject({
+          statusCode: 409,
+          errorCode: "no_citations",
+        });
+      }
+      expect(holder.runConstancia).not.toHaveBeenCalled();
+    });
+  });
+
   describe("unverified state", () => {
     it("rejects when a citation is stale", async () => {
       await seed("CON_PROBLEMAS", [
@@ -379,7 +411,7 @@ describe("emit-commitment", () => {
       ]);
       await expect(
         asLawyer(() =>
-          emitCommitment.run({ briefId: "b1", confirmPartial: true }, CTX),
+          emitPartialCertificate.run({ briefId: "b1" }, CTX),
         ),
       ).rejects.toMatchObject({
         statusCode: 409,
