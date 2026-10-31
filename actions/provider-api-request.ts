@@ -34,8 +34,10 @@ const schema = z.object({
     .optional(),
 });
 
-export function requiresProviderApiApproval(args: { method: string }): boolean {
-  return args.method !== "GET" && args.method !== "HEAD";
+export function requiresProviderApiApproval(_args: { method: string }): boolean {
+  // Path and query are caller-controlled, and a brief can carry instructions
+  // that try to turn a read into a write. Every call needs approval.
+  return true;
 }
 
 export default createProviderApiRequestAction(runtime, {
