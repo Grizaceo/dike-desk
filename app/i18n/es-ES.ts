@@ -114,6 +114,7 @@ const messages = {
     authorYou: "Tú",
     authorAgent: "Agente",
     authorEngine: "Diké",
+    previousVerification: "Verificación anterior",
     engineLabel: "Motor",
     sourceLink: "Fuente",
     askAgentPlaceholder:

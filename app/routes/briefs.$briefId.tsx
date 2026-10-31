@@ -1,61 +1,33 @@
-import { sendToAgentChat } from "@agent-native/core/client/agent-chat";
-import { useT } from "@agent-native/core/client/i18n";
 import {
   actionErrorMessage,
   useActionMutation,
   useActionQuery,
 } from "@agent-native/core/client/hooks";
+import { useT } from "@agent-native/core/client/i18n";
 import {
   IconArrowLeft,
-  IconCheck,
-  IconExternalLink,
-  IconMessage,
   IconPencil,
   IconCertificate,
   IconShieldCheck,
-  IconX,
 } from "@tabler/icons-react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { toast } from "sonner";
 
-import {
-  STATUS_STYLES,
-  StatusBadge,
-  VerdictBadge,
-  type CitationStatus,
-} from "@/components/briefs/StatusBadge";
+import CitationCard from "@/components/briefs/CitationCard";
 import CommitmentPanel, {
   type CommitmentData,
 } from "@/components/briefs/CommitmentPanel";
+import {
+  ReviewAuthor,
+  SuggestionState,
+} from "@/components/briefs/ReviewAuthor";
+import { STATUS_STYLES, VerdictBadge } from "@/components/briefs/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getActivityItems, getCitationItems } from "@/lib/brief-review";
+import type { Citation } from "@/lib/brief-types";
 import { cn } from "@/lib/utils";
-
-type Citation = {
-  id: string;
-  position: number;
-  raw: string;
-  start: number;
-  end: number;
-  status: CitationStatus;
-  resolution: string | null;
-  label: string | null;
-  textSha256: string | null;
-  sourceUrl: string | null;
-  retrievedAt: string | null;
-};
-
-type ReviewItem = {
-  id: string;
-  citationId: string | null;
-  kind: "comment" | "suggestion" | "decision" | "agent_note";
-  author: "user" | "agent" | "engine";
-  body: string;
-  replacement: string | null;
-  state: "pending" | "accepted" | "rejected" | "expired" | null;
-  createdAt: string;
-};
 
 function toastError(fallback: string) {
   return (error: unknown) => toast.error(actionErrorMessage(error) ?? fallback);
@@ -129,8 +101,8 @@ export default function BriefRoute() {
     setScrollToCommitment(false);
   }, [scrollToCommitment, data?.brief.commitment]);
 
-  const citations = (data?.citations ?? []) as Citation[];
-  const review = (data?.review ?? []) as ReviewItem[];
+  const citations = data?.citations ?? [];
+  const review = data?.review ?? [];
   const parts = useMemo(
     () => segments(data?.brief.body ?? "", citations),
     [data?.brief.body, citations],
@@ -147,7 +119,8 @@ export default function BriefRoute() {
   if (!data) {
     return (
       <main className="p-6 text-sm text-muted-foreground">
-        {t("brief.notFound")} <Link className="underline" to="/briefs">
+        {t("brief.notFound")}{" "}
+        <Link className="underline" to="/briefs">
           {t("brief.backToBriefs")}
         </Link>
       </main>
@@ -157,7 +130,7 @@ export default function BriefRoute() {
   const { brief } = data;
   const commitment = brief.commitment as CommitmentData | null;
   const busy = verify.isPending || update.isPending || commit.isPending;
-  const generalNotes = review.filter((r) => !r.citationId);
+  const activity = getActivityItems(review, citations);
 
   return (
     <main className="grid min-h-full gap-4 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_26rem]">
@@ -186,7 +159,11 @@ export default function BriefRoute() {
                 >
                   {t("brief.editSave")}
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setEditing(false)}
+                >
                   {t("brief.editCancel")}
                 </Button>
               </>
@@ -244,7 +221,9 @@ export default function BriefRoute() {
               onClick={() => verify.mutate({ briefId })}
             >
               <IconShieldCheck className="size-4" />
-              {verify.isPending ? t("brief.verifyProgress") : t("brief.verifyButton")}
+              {verify.isPending
+                ? t("brief.verifyProgress")
+                : t("brief.verifyButton")}
             </Button>
             <Button
               variant="outline"
@@ -279,7 +258,7 @@ export default function BriefRoute() {
             key={citation.id}
             briefId={briefId}
             citation={citation}
-            items={review.filter((r) => r.citationId === citation.id)}
+            items={getCitationItems(review, citation.id)}
             selected={selectedId === citation.id}
             onSelect={() => setSelectedId(citation.id)}
           />
@@ -290,20 +269,34 @@ export default function BriefRoute() {
           </div>
         ) : null}
 
-        {generalNotes.length ? (
+        {activity.length ? (
           <div className="rounded-xl border border-border bg-card p-4">
-            <h2 className="mb-2 text-sm font-medium">{t("brief.activityTitle")}</h2>
+            <h2 className="mb-2 text-sm font-medium">
+              {t("brief.activityTitle")}
+            </h2>
             <ul className="space-y-1.5">
-              {generalNotes.map((note) => (
-                <li key={note.id} className="text-xs text-muted-foreground">
+              {activity.map(({ item, historical }) => (
+                <li key={item.id} className="text-xs text-muted-foreground">
                   <span className="font-medium text-foreground">
-                    {note.author === "user"
-                      ? t("brief.authorYou")
-                      : note.author === "agent"
-                        ? t("brief.authorAgent")
-                        : t("brief.authorEngine")}
+                    <ReviewAuthor author={item.author} />
                   </span>{" "}
-                  {note.body}
+                  {historical ? (
+                    <span className="rounded border border-border px-1 text-[10px]">
+                      {t("brief.previousVerification")}
+                    </span>
+                  ) : null}{" "}
+                  {item.kind === "suggestion" ? (
+                    <>
+                      {t("brief.agentProposes")}{" "}
+                      {item.replacement ? (
+                        <code>{item.replacement}</code>
+                      ) : (
+                        <em>{t("brief.withdraw")}</em>
+                      )}{" "}
+                      · <SuggestionState state={item.state} />{" "}
+                    </>
+                  ) : null}
+                  {item.body}
                 </li>
               ))}
             </ul>
@@ -311,189 +304,5 @@ export default function BriefRoute() {
         ) : null}
       </aside>
     </main>
-  );
-}
-
-function CitationCard({
-  briefId,
-  citation,
-  items,
-  selected,
-  onSelect,
-}: {
-  briefId: string;
-  citation: Citation;
-  items: ReviewItem[];
-  selected: boolean;
-  onSelect: () => void;
-}) {
-  const t = useT();
-  const [comment, setComment] = useState("");
-  const decide = useActionMutation("decide-suggestion", {
-    onError: toastError(t("brief.decideFailed")),
-  });
-  const addComment = useActionMutation("add-comment", {
-    onError: toastError(t("brief.commentFailed")),
-  });
-
-  function askAgent(event: React.FormEvent) {
-    event.preventDefault();
-    const text = comment.trim();
-    if (!text) return;
-    setComment("");
-    // The comment stays on the page; the agent picks it up in a visible turn.
-    addComment.mutate(
-      { briefId, citationId: citation.id, body: text },
-      {
-        onSuccess: (result) =>
-          sendToAgentChat({
-            message: text,
-            context: JSON.stringify({
-              briefId,
-              citationId: citation.id,
-              citation: citation.raw,
-              status: citation.status,
-              commentId: result.id,
-              note: "The lawyer's comment is already saved on the page; reply with add-comment.",
-            }),
-            submit: true,
-            openSidebar: true,
-          }),
-      },
-    );
-  }
-
-  return (
-    <article
-      onClick={onSelect}
-      className={cn(
-        "flex flex-col gap-2 rounded-xl border bg-card p-3",
-        selected ? "border-ring" : "border-border",
-      )}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <strong className="min-w-0 text-sm font-medium">{citation.raw}</strong>
-        <StatusBadge status={citation.status} />
-      </div>
-      {citation.label ? (
-        <p className="text-xs text-muted-foreground">{citation.label}</p>
-      ) : null}
-      {citation.status !== "verified" && citation.resolution ? (
-        <p className="text-xs">
-          {t("brief.engineLabel")}: <code>{citation.resolution}</code>
-        </p>
-      ) : null}
-      {citation.sourceUrl ? (
-        <a
-          href={citation.sourceUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1 text-xs text-muted-foreground underline"
-        >
-          {t("brief.sourceLink")} <IconExternalLink className="size-3" />
-        </a>
-      ) : null}
-
-      {items.map((item) =>
-        item.kind === "suggestion" ? (
-          <div
-            key={item.id}
-            className="rounded-lg border border-dashed border-border p-2 text-xs"
-          >
-            <p>
-              <span className="font-medium">{t("brief.agentProposes")}</span>{" "}
-              {item.replacement ? (
-                <code>{item.replacement}</code>
-              ) : (
-                <em>{t("brief.withdraw")}</em>
-              )}
-            </p>
-            <p className="mt-1 text-muted-foreground">{item.body}</p>
-            {item.state === "pending" ? (
-              <div className="mt-2 flex gap-2">
-                <Button
-                  size="sm"
-                  disabled={decide.isPending}
-                  onClick={() =>
-                    decide.mutate(
-                      { suggestionId: item.id, decision: "accepted" },
-                      {
-                        onSuccess: () =>
-                          sendToAgentChat({
-                            message: t("brief.acceptedAgentMessage", {
-                              citation: citation.raw,
-                            }),
-                            context: JSON.stringify({
-                              briefId,
-                              suggestionId: item.id,
-                              citationId: citation.id,
-                              replacement: item.replacement,
-                            }),
-                            submit: true,
-                            openSidebar: true,
-                          }),
-                      },
-                    )
-                  }
-                >
-                  <IconCheck className="size-3.5" /> {t("brief.acceptButton")}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={decide.isPending}
-                  onClick={() =>
-                    decide.mutate({ suggestionId: item.id, decision: "rejected" })
-                  }
-                >
-                  <IconX className="size-3.5" /> {t("brief.rejectButton")}
-                </Button>
-              </div>
-            ) : (
-              <p className="mt-1 font-medium capitalize">
-                {item.state === "accepted"
-                  ? t("brief.statusAccepted")
-                  : item.state === "rejected"
-                    ? t("brief.statusRejected")
-                    : item.state === "expired"
-                      ? t("brief.statusExpired")
-                      : t("brief.statusPending")}
-              </p>
-            )}
-          </div>
-        ) : (
-          <p key={item.id} className="text-xs">
-            <span className="font-medium">
-              {item.author === "user"
-                ? t("brief.authorYou")
-                : item.author === "agent"
-                  ? t("brief.authorAgent")
-                  : t("brief.authorEngine")}
-              :
-            </span>{" "}
-            {item.body}
-          </p>
-        ),
-      )}
-
-      <form onSubmit={askAgent} className="flex gap-2">
-        <input
-          value={comment}
-          onChange={(event) => setComment(event.target.value)}
-          placeholder={t("brief.askAgentPlaceholder")}
-          className="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
-        <Button
-          type="submit"
-          size="sm"
-          variant="outline"
-          disabled={!comment.trim()}
-          aria-label={t("brief.askAgentButton")}
-          title={t("brief.askAgentButton")}
-        >
-          <IconMessage className="size-3.5" />
-        </Button>
-      </form>
-    </article>
   );
 }
