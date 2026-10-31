@@ -184,6 +184,8 @@ export const KNOWN_ERROR_CODES = [
   "not_found",
   "not_verified",
   "partial_needs_confirmation",
+  "no_citations",
+  "nothing_verified",
   "commitment_mismatch",
   "commitment_not_emitted",
   "commitment_hash_mismatch",

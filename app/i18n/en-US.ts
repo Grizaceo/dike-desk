@@ -192,11 +192,9 @@ const messages = {
     textMatchOk: "The brief's current text matches this fingerprint.",
     textMismatch:
       "The brief's current text does NOT match this fingerprint: this certificate does not correspond to the current text.",
-    hashPrivacy:
-      "certificado.json includes the brief's fingerprint and each citation's text. Share it only with whoever can already see the brief: with the fingerprint, anyone holding a draft can check whether it is this one.",
     downloadCertificate: "Download certificado.json",
     downloadJson: "Download commitment.json",
-    downloadText: "Download the verified text (.txt)",
+    downloadText: "Download the certificate's text (.txt)",
     downloadSig: "Download commitment.sig.json",
     downloadPub: "Download .pub",
     labelCommitmentHash: "Commitment fingerprint (commitment_hash, SHA-256)",
@@ -211,7 +209,7 @@ const messages = {
     labelScope: "Scope",
     showJson: "Show full JSON",
     sealTitle: "Integrity seal",
-    badgeSealed: "Integrity seal · key {{key_id}}",
+    badgeSealed: "commitment.json sealed · key {{key_id}}",
     badgeUnsealed: "No seal",
     sealScope:
       "The seal covers commitment.json only. certificado.json (title, brief fingerprint, citation list and partial flag) is not sealed: anyone can edit it. verificar_certificado.py checks that the text and the commitment match what the certificate says, not that the certificate is authentic.",
@@ -232,7 +230,7 @@ const messages = {
     labelAlgorithm: "Algorithm",
     labelRole: "Role",
     labelPubkey: "Public key (content-signing-key.pub)",
-    offlineStep2: "Check the commitment\u2019s integrity seal",
+    offlineStep2: "Check commitment.json\u2019s integrity seal",
   },
   reason: {
     ambiguous:
@@ -273,6 +271,8 @@ const messages = {
   },
   errors: {
     not_found: "The brief or item was not found.",
+    no_citations: "Diké detected no citations: there is nothing to certify.",
+    nothing_verified: "No citation was verified: there is nothing to certify.",
     not_verified: "Verify the current text before issuing the certificate.",
     partial_needs_confirmation:
       "There are unverified citations: confirm the partial issue on screen.",

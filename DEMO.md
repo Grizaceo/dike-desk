@@ -10,7 +10,7 @@ Duración objetivo: 3 a 4 minutos. Cifras: decir siempre «en este escrito sint�
 2. En «Fecha de referencia (vigencia)», elegir el 15-09-2026, la fecha de la separación del caso (hecho sintético). Decir: «La fecha de referencia la elijo yo, no la app; aquí, la de los hechos. Diké evalúa la vigencia a esa fecha».
 3. «Verificar con Diké». En pantalla: 4 de 6 citas detectadas existen y están vigentes al 2026-09-15; «artículo 60» Ambigua; «artículo 640 del Código del Trabajo» No se pudo verificar.
 4. Señalar el aviso fijo: Diké revisa solo las citas a normas que detecta; no revisa jurisprudencia ni doctrina, ni si la norma respalda la frase.
-5. Señalar el aviso de privacidad: el motor Diké corre en el equipo sin red; el agente envía el texto a su proveedor de modelo, que se ve nombrado ahí.
+5. Señalar el aviso de privacidad: el motor Diké corre en el equipo (con Docker, además, sin red); el agente envía el texto a su proveedor de modelo, que se ve nombrado ahí.
 
 ## Escena 2 — El artículo 60 existe, pero no sirve (60 s) — equipo LexO
 
@@ -42,7 +42,7 @@ Duración objetivo: 3 a 4 minutos. Cifras: decir siempre «en este escrito sint�
 4. Descargar `certificado.json`, `commitment.json` y el texto verificado, y en una terminal:
    `python3 verifier/verificar_certificado.py certificado.json escrito-verificado.txt commitment.json` → COINCIDE.
    Cambiar una letra del texto y repetir → NO COINCIDE.
-5. Cierre: «Diké dice qué normas existen y están vigentes a la fecha que elegí, y lo deja ligado a este texto. Si la norma sirve, y si la cito bien, lo decido yo».
+5. Cierre: «Diké dice qué normas existen y están vigentes a la fecha que elegí, y deja una huella de este texto en el certificado, fuera del sello. Si la norma sirve, y si la cito bien, lo decido yo».
 
 ## Qué no decir
 

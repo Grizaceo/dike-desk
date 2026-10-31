@@ -181,6 +181,10 @@ model, not a technical control.
 - The brief fingerprint lives in the dike-desk wrapper certificate, not
   inside the engine-sealed commitment (see the engine pending item in
   [`AGENTS.md`](AGENTS.md)).
+- UI-only actions prove the request came from the signed-in session
+  holder's browser context (cookie + same-origin + UI capability), not
+  that a human clicked: a client holding the lawyer's session cookie can
+  still call them.
 - The seal covers `commitment.json` only. `certificado.json` (title, brief
   fingerprint, citation list and partial flag) is not sealed: anyone can
   edit it. `verificar_certificado.py` checks that the text and the

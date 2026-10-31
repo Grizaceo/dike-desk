@@ -284,9 +284,6 @@ export default function CommitmentPanel({
 
           <p className="text-xs text-muted-foreground">{certificate.alcance}</p>
           <p className="text-xs text-muted-foreground">
-            {t("commitment.hashPrivacy")}
-          </p>
-          <p className="text-xs text-muted-foreground">
             {t("commitment.sealScope")}
           </p>
           <p className="text-xs text-muted-foreground">

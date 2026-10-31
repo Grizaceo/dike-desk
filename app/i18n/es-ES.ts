@@ -94,7 +94,7 @@ const messages = {
     verifyButton: "Verificar con Diké",
     verifyProgress: "Verificando…",
     emitCommitment: "Emitir certificado de verificación",
-    committedSigned: "Certificado de verificación emitido. El commitment lleva sello de integridad.",
+    committedSigned: "Certificado de verificación emitido; commitment.json lleva sello de integridad.",
     committedUnsigned: "Certificado de verificación emitido (sin sello)",
     verifyFailed: "La verificación falló.",
     saveFailed: "No se pudo guardar el escrito.",
@@ -110,7 +110,7 @@ const messages = {
       "vigencia al {{date}} (fecha de hoy, no necesariamente la de los hechos)",
     asOfLabel: "Fecha de referencia (vigencia)",
     asOfHint:
-      "Si la dejas vacía, Diké usa la fecha de hoy. Para un despido, suele importar la fecha de la separación.",
+      "Si la dejas vacía, Diké usa la fecha de hoy. Puedes elegir otra, por ejemplo la fecha de los hechos.",
     metaChecked:
       "Diké revisa las citas a normas legales que detecta (no jurisprudencia ni doctrina): comprueba que cada norma exista en su corpus, tenga texto citable y esté vigente a la fecha de referencia. No comprueba que respalde tu argumento ni que la paráfrasis sea fiel.",
     undetectedOne:
@@ -192,14 +192,12 @@ const messages = {
     textMatchOk: "El texto actual del escrito coincide con esta huella.",
     textMismatch:
       "El texto actual del escrito NO coincide con esta huella: este certificado no corresponde al texto actual.",
-    hashPrivacy:
-      "certificado.json incluye la huella del escrito y el texto de cada cita. Compártelo solo con quien ya pueda ver el escrito: con la huella, cualquiera que tenga un borrador puede comprobar si es este.",
     downloadCertificate: "Descargar certificado.json",
     downloadJson: "Descargar commitment.json",
-    downloadText: "Descargar el texto verificado (.txt)",
+    downloadText: "Descargar el texto del certificado (.txt)",
     downloadSig: "Descargar commitment.sig.json",
     downloadPub: "Descargar .pub",
-    labelCommitmentHash: "Huella del commitment (commitment_hash, SHA-256)",
+    labelCommitmentHash: "Huella de commitment.json (commitment_hash, SHA-256)",
     labelKeyId: "Identificador de la llave (key_id)",
     labelPackHash: "Corpus (pack_hash)",
     labelAsOf: "Fecha de referencia (as_of)",
@@ -211,10 +209,10 @@ const messages = {
     labelScope: "Alcance",
     showJson: "Mostrar JSON completo",
     sealTitle: "Sello de integridad",
-    badgeSealed: "Sello de integridad · llave {{key_id}}",
+    badgeSealed: "commitment.json con sello de integridad · llave {{key_id}}",
     badgeUnsealed: "Sin sello",
     sealScope:
-      "El sello cubre solo commitment.json. certificado.json (título, huella del escrito, lista de citas y carácter parcial) no está sellado: cualquiera puede editarlo. verificar_certificado.py comprueba que el texto y el commitment coinciden con lo que dice el certificado, no que el certificado sea auténtico.",
+      "El sello cubre solo commitment.json. certificado.json (título, huella del escrito, lista de citas y carácter parcial) no está sellado: cualquiera puede editarlo. verificar_certificado.py comprueba que el texto y commitment.json coinciden con lo que dice el certificado, no que el certificado sea auténtico.",
     certPrivacy:
       "certificado.json incluye el título del escrito, su huella y el texto de cada cita. Compártelo solo con quien ya pueda ver el escrito: con la huella, cualquiera que tenga un borrador puede comprobar si es este.",
     sealExplanation:
@@ -232,7 +230,7 @@ const messages = {
     labelAlgorithm: "Algoritmo",
     labelRole: "Rol",
     labelPubkey: "Clave pública (content-signing-key.pub)",
-    offlineStep2: "Comprobar el sello de integridad del commitment",
+    offlineStep2: "Comprobar el sello de integridad de commitment.json",
   },
   reason: {
     ambiguous:
@@ -273,6 +271,10 @@ const messages = {
   },
   errors: {
     not_found: "No se encontró el escrito o el elemento.",
+    no_citations:
+      "Diké no detectó citas: no hay nada que certificar.",
+    nothing_verified:
+      "Ninguna cita quedó verificada: no hay nada que certificar.",
     not_verified: "Verifica el texto actual antes de emitir el certificado.",
     partial_needs_confirmation:
       "Hay citas sin verificar: confirma la emisión parcial en la pantalla.",
