@@ -14,7 +14,11 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const holder = vi.hoisted(() => ({
-  calls: [] as { cmd: string; args: string[] }[],
+  calls: [] as {
+    cmd: string;
+    args: string[];
+    options: { env?: NodeJS.ProcessEnv };
+  }[],
   handler: null as
     | null
     | ((
@@ -31,10 +35,10 @@ vi.mock("node:child_process", () => ({
   execFile: (
     cmd: string,
     args: string[],
-    _options: unknown,
+    options: { env?: NodeJS.ProcessEnv },
     callback: (error: Error | null, stdout: string, stderr: string) => void,
   ) => {
-    holder.calls.push({ cmd, args });
+    holder.calls.push({ cmd, args, options });
     const reply = holder.handler!(cmd, args);
     const code = reply.code ?? 0;
     const error = code
@@ -282,6 +286,41 @@ describe("runConstancia", () => {
       expect(holder.calls[0].cmd).toBe("/opt/dike/bin/dike");
       expect(outMode).toBe(0o700);
     });
+
+    it("passes only engine and runtime environment variables to the local binary", async () => {
+      vi.stubEnv("DIKE_DOCKER_IMAGE", undefined);
+      vi.stubEnv("DIKE_BIN", "/opt/dike/bin/dike");
+      vi.stubEnv("OPENAI_API_KEY", CANARY);
+      vi.stubEnv("BETTER_AUTH_SECRET", CANARY);
+      vi.stubEnv("DATABASE_URL", CANARY);
+      vi.stubEnv("PATH", "/synthetic/bin");
+      vi.stubEnv("LEXO_CONTENT_SIGNING_KEY_PATH", "/synthetic/key");
+      vi.stubEnv("DIKE_VAULT_ROOT", "/synthetic/vault");
+      engine({}, () => ({ stdout: ENGINE_JSON }));
+      const { runConstancia } = await load();
+      await runConstancia(BODY);
+      const env = holder.calls[0].options.env!;
+      expect(env.PATH).toBe("/synthetic/bin");
+      expect(env.LEXO_CONTENT_SIGNING_KEY_PATH).toBe("/synthetic/key");
+      expect(env.DIKE_VAULT_ROOT).toBe("/synthetic/vault");
+      expect(env.OPENAI_API_KEY).toBeUndefined();
+      expect(env.BETTER_AUTH_SECRET).toBeUndefined();
+      expect(env.DATABASE_URL).toBeUndefined();
+      expect(
+        Object.keys(env).every(
+          (key) =>
+            [
+              "PATH",
+              "HOME",
+              "LANG",
+              "LANGUAGE",
+              "TZ",
+              "TMPDIR",
+              "VIRTUAL_ENV",
+            ].includes(key) || /^(LC_|PYTHON|DIKE_|LEXO_)/.test(key),
+        ),
+      ).toBe(true);
+    });
   });
 
   describe("exit codes and output", () => {
@@ -321,6 +360,87 @@ describe("runConstancia", () => {
         errorCode: "dike_bad_output",
         statusCode: 502,
       });
+    });
+
+    it.each([
+      [
+        "missing verdict",
+        (result: any) => {
+          delete result.veredicto;
+        },
+      ],
+      [
+        "unknown verdict",
+        (result: any) => {
+          result.veredicto = "UNKNOWN";
+        },
+      ],
+      [
+        "non-string citation",
+        (result: any) => {
+          result.detalles = [{ cita_raw: 42, estado: "FALLO" }];
+        },
+      ],
+      [
+        "counter mismatch",
+        (result: any) => {
+          result.meta.total_citas = 1;
+        },
+      ],
+    ])("rejects %s", async (_label, mutate) => {
+      const result = JSON.parse(ENGINE_JSON);
+      mutate(result);
+      engine({ stdout: ROOTLESS }, () => ({ stdout: JSON.stringify(result) }));
+      const { runConstancia } = await load();
+      await expect(runConstancia(BODY)).rejects.toMatchObject({
+        errorCode: "dike_bad_output",
+        statusCode: 502,
+      });
+    });
+
+    it("accepts SIN_CITAS without optional fields and strips document paths", async () => {
+      const result = JSON.parse(ENGINE_JSON);
+      result.veredicto = "SIN_CITAS";
+      delete result.alcance;
+      delete result.problemas;
+      delete result.meta.total_citas;
+      delete result.meta.citas_verificadas;
+      delete result.meta.citas_fallidas;
+      result.meta.documento = "/tmp/synthetic-brief.md";
+      result.meta.origen = "synthetic";
+      engine({ stdout: ROOTLESS }, () => ({ stdout: JSON.stringify(result) }));
+      const { runConstancia } = await load();
+      const { result: parsed } = await runConstancia(BODY);
+      expect(parsed.veredicto).toBe("SIN_CITAS");
+      expect(parsed.problemas).toEqual([]);
+      expect(parsed.meta).toMatchObject({
+        total_citas: 0,
+        citas_verificadas: 0,
+        citas_fallidas: 0,
+      });
+      expect(parsed.meta).not.toHaveProperty("documento");
+      expect(parsed.meta).not.toHaveProperty("origen");
+    });
+
+    it("normalizes missing counters and accepts nullish detail fields", async () => {
+      const result = JSON.parse(ENGINE_JSON);
+      result.veredicto = "CON_PROBLEMAS";
+      result.detalles = [
+        { cita_raw: "art. 1", estado: "VERIFICADA", gid: null },
+        { cita_raw: "art. 2", estado: "FALLO", cuerpo: null, fuente_url: "" },
+      ];
+      delete result.meta.total_citas;
+      delete result.meta.citas_verificadas;
+      delete result.meta.citas_fallidas;
+      engine({ stdout: ROOTLESS }, () => ({ stdout: JSON.stringify(result) }));
+      const { runConstancia } = await load();
+      const { result: parsed } = await runConstancia(BODY);
+      expect(parsed.meta).toMatchObject({
+        total_citas: 2,
+        citas_verificadas: 1,
+        citas_fallidas: 1,
+      });
+      expect(parsed.detalles[0].gid).toBeNull();
     });
   });
 

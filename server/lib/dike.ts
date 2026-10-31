@@ -14,6 +14,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { fail } from "@agent-native/core/action";
+import { z } from "zod";
 
 import type { CitationStatus } from "../db/schema.js";
 
@@ -26,28 +27,42 @@ import type { CitationStatus } from "../db/schema.js";
 //                            network disabled (recommended, works on any OS)
 //   DIKE_BIN=dike            run a locally installed engine (Linux)
 
-export type DikeDetail = {
-  cita_raw: string;
-  gid: string;
-  estado: "VERIFICADA" | "FALLO";
-  resolucion: string;
-  cuerpo: string | null;
-  texto_hash: string | null;
-  vigencia: string;
-  fuente_url: string;
-  fecha_recuperacion: string;
-};
+const detailSchema = z.object({
+  cita_raw: z.string(),
+  estado: z.enum(["VERIFICADA", "FALLO"]),
+  gid: z.string().nullish(),
+  resolucion: z.string().nullish(),
+  cuerpo: z.string().nullish(),
+  texto_hash: z.string().nullish(),
+  vigencia: z.string().nullish(),
+  fuente_url: z.string().nullish(),
+  fecha_recuperacion: z.string().nullish(),
+});
 
-export type DikeResult = {
-  veredicto: "TODAS_VERIFICADAS" | "CON_PROBLEMAS";
-  mensaje: string;
-  alcance: string;
-  problemas: string[];
-  detalles: DikeDetail[];
-  meta: {
-    as_of: string;
-    fecha_constancia: string;
-    pack_hash: string;
+const resultSchema = z.object({
+  veredicto: z.enum([
+    "TODAS_VERIFICADAS",
+    "CON_PROBLEMAS",
+    "SIN_CITAS",
+    "SIN_CORPUS",
+  ]),
+  mensaje: z.string(),
+  alcance: z.string().optional(),
+  problemas: z.array(z.string()).default([]),
+  detalles: z.array(detailSchema),
+  meta: z.object({
+    as_of: z.string(),
+    fecha_constancia: z.string(),
+    pack_hash: z.string(),
+    total_citas: z.number().int().nonnegative().optional(),
+    citas_verificadas: z.number().int().nonnegative().optional(),
+    citas_fallidas: z.number().int().nonnegative().optional(),
+  }),
+});
+
+export type DikeDetail = z.infer<typeof detailSchema>;
+export type DikeResult = Omit<z.infer<typeof resultSchema>, "meta"> & {
+  meta: z.infer<typeof resultSchema>["meta"] & {
     total_citas: number;
     citas_verificadas: number;
     citas_fallidas: number;
@@ -68,13 +83,18 @@ const MAX_JSON_BYTES = 8 * 1024 * 1024;
 const MAX_PUBKEY_BYTES = 16 * 1024;
 const IMAGE_HOME = "/home/dike";
 
-function run(cmd: string, args: string[]) {
+function run(cmd: string, args: string[], env?: NodeJS.ProcessEnv) {
   return new Promise<{ code: number; stdout: string; stderr: string }>(
     (resolve) => {
       execFile(
         cmd,
         args,
-        { timeout: TIMEOUT_MS, maxBuffer: 16 * 1024 * 1024, windowsHide: true },
+        {
+          timeout: TIMEOUT_MS,
+          maxBuffer: 16 * 1024 * 1024,
+          windowsHide: true,
+          ...(env ? { env } : {}),
+        },
         (error, stdout, stderr) => {
           const code =
             error && typeof (error as { code?: unknown }).code === "number"
@@ -86,6 +106,23 @@ function run(cmd: string, args: string[]) {
         },
       );
     },
+  );
+}
+
+function localEngineEnv() {
+  return Object.fromEntries(
+    Object.entries(process.env).filter(
+      ([key]) =>
+        [
+          "PATH",
+          "HOME",
+          "LANG",
+          "LANGUAGE",
+          "TZ",
+          "TMPDIR",
+          "VIRTUAL_ENV",
+        ].includes(key) || /^(LC_|PYTHON|DIKE_|LEXO_)/.test(key),
+    ),
   );
 }
 
@@ -200,7 +237,7 @@ export async function runConstancia(
           "dike",
           ...args,
         ])
-      : await run(bin!, args);
+      : await run(bin!, args, localEngineEnv());
 
     // 0 = all verified, 1 = some were not. Anything else is an engine failure.
     // The engine's stderr can echo brief text or paths: it is never surfaced.
@@ -216,13 +253,23 @@ export async function runConstancia(
     } catch {
       return badOutput();
     }
-    if (
-      !isRecord(parsed) ||
-      !Array.isArray(parsed.detalles) ||
-      !isRecord(parsed.meta)
-    )
-      return badOutput();
-    const result = parsed as unknown as DikeResult;
+    const validated = resultSchema.safeParse(parsed);
+    if (!validated.success) return badOutput();
+    const value = validated.data;
+    const counters = {
+      total_citas: value.detalles.length,
+      citas_verificadas: value.detalles.filter((d) => d.estado === "VERIFICADA")
+        .length,
+      citas_fallidas: value.detalles.filter((d) => d.estado === "FALLO").length,
+    };
+    for (const key of Object.keys(counters) as (keyof typeof counters)[]) {
+      if (value.meta[key] !== undefined && value.meta[key] !== counters[key])
+        return badOutput();
+    }
+    const result: DikeResult = {
+      ...value,
+      meta: { ...value.meta, ...counters },
+    };
 
     let commitment: unknown = null;
     let signature: unknown = null;
