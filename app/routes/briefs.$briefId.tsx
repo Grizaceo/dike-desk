@@ -25,29 +25,15 @@ import {
 import { STATUS_STYLES, VerdictBadge } from "@/components/briefs/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getActivityItems, getCitationItems } from "@/lib/brief-review";
-import type { Citation } from "@/lib/brief-types";
+import {
+  bodySegments,
+  getActivityItems,
+  getCitationItems,
+} from "@/lib/brief-review";
 import { cn } from "@/lib/utils";
 
 function toastError(fallback: string) {
   return (error: unknown) => toast.error(actionErrorMessage(error) ?? fallback);
-}
-
-/** Split the body into plain text and highlighted citation spans. */
-function segments(body: string, citations: Citation[]) {
-  const spans = citations
-    .filter((c) => c.start >= 0 && c.end <= body.length)
-    .sort((a, b) => a.start - b.start);
-  const out: Array<{ text: string; citation?: Citation }> = [];
-  let cursor = 0;
-  for (const c of spans) {
-    if (c.start < cursor) continue;
-    if (c.start > cursor) out.push({ text: body.slice(cursor, c.start) });
-    out.push({ text: body.slice(c.start, c.end), citation: c });
-    cursor = c.end;
-  }
-  if (cursor < body.length) out.push({ text: body.slice(cursor) });
-  return out;
 }
 
 export default function BriefRoute() {
@@ -57,6 +43,7 @@ export default function BriefRoute() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
+  const [editBase, setEditBase] = useState("");
 
   const verify = useActionMutation("verify-brief", {
     onSuccess: (result) =>
@@ -104,7 +91,7 @@ export default function BriefRoute() {
   const citations = data?.citations ?? [];
   const review = data?.review ?? [];
   const parts = useMemo(
-    () => segments(data?.brief.body ?? "", citations),
+    () => bodySegments(data?.brief.body ?? "", citations),
     [data?.brief.body, citations],
   );
 
@@ -130,7 +117,9 @@ export default function BriefRoute() {
   const { brief } = data;
   const commitment = brief.commitment as CommitmentData | null;
   const busy = verify.isPending || update.isPending || commit.isPending;
-  const activity = getActivityItems(review, citations);
+  const activity = getActivityItems(review, citations, {
+    currentVerification: Boolean(brief.meta),
+  });
 
   return (
     <main className="grid min-h-full gap-4 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_26rem]">
@@ -155,7 +144,13 @@ export default function BriefRoute() {
                 <Button
                   size="sm"
                   disabled={busy}
-                  onClick={() => update.mutate({ briefId, body: draft })}
+                  onClick={() =>
+                    update.mutate({
+                      briefId,
+                      body: draft,
+                      expectedUpdatedAt: editBase,
+                    })
+                  }
                 >
                   {t("brief.editSave")}
                 </Button>
@@ -173,6 +168,7 @@ export default function BriefRoute() {
                 variant="outline"
                 onClick={() => {
                   setDraft(brief.body);
+                  setEditBase(brief.updatedAt);
                   setEditing(true);
                 }}
               >
@@ -287,7 +283,11 @@ export default function BriefRoute() {
                   ) : null}{" "}
                   {item.kind === "suggestion" ? (
                     <>
-                      {t("brief.agentProposes")}{" "}
+                      {t(
+                        item.author === "user"
+                          ? "brief.userProposes"
+                          : "brief.agentProposes",
+                      )}{" "}
                       {item.replacement ? (
                         <code>{item.replacement}</code>
                       ) : (

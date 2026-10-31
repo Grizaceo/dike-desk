@@ -106,6 +106,7 @@ const messages = {
       "Diké verifica que cada precepto exista, tenga texto citable y esté vigente. No verifica que respalde tu argumento.",
     activityTitle: "Actividad",
     agentProposes: "El agente propone:",
+    userProposes: "Propones:",
     withdraw: "retirar esta cita",
     statusPending: "pendiente",
     statusAccepted: "aceptada",

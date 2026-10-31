@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { getDb, schema } from "../server/db/index.js";
 import { lockBrief } from "../server/lib/brief-write.js";
-import { requireUser } from "../server/lib/briefs.js";
+import { commentAuthor, requireUser } from "../server/lib/briefs.js";
 
 export default defineAction({
   description:
@@ -53,7 +53,7 @@ export default defineAction({
         briefId: args.briefId,
         citationId: args.citationId,
         kind: "suggestion" as const,
-        author: "agent" as const,
+        author: commentAuthor(ctx),
         body: args.rationale,
         replacement: args.replacement,
         state: "pending" as const,

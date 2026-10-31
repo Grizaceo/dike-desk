@@ -1,4 +1,5 @@
 import { defineAction, fail } from "@agent-native/core/action";
+import { accessFilter } from "@agent-native/core/sharing";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -19,14 +20,16 @@ export default defineAction({
   uiOnly: true,
   run: async ({ suggestionId, decision, note }, ctx) => {
     const ownerEmail = requireUser(ctx);
-    const { reviewItems, citations, briefs } = schema;
+    const { reviewItems, citations, briefs, briefShares } = schema;
     const [found] = await getDb()
       .select({ briefId: reviewItems.briefId })
       .from(reviewItems)
+      .innerJoin(briefs, eq(reviewItems.briefId, briefs.id))
       .where(
         and(
           eq(reviewItems.id, suggestionId),
           eq(reviewItems.kind, "suggestion"),
+          accessFilter(briefs, briefShares, undefined, "editor"),
         ),
       )
       .limit(1);

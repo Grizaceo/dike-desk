@@ -19,6 +19,7 @@ import {
 } from "@/components/briefs/ReviewAuthor";
 import { StatusBadge } from "@/components/briefs/StatusBadge";
 import { Button } from "@/components/ui/button";
+import { safeExternalUrl } from "@/lib/brief-review";
 import type { Citation, ReviewItem } from "@/lib/brief-types";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +42,7 @@ export default function CitationCard({
 }) {
   const t = useT();
   const [comment, setComment] = useState("");
+  const sourceUrl = safeExternalUrl(citation.sourceUrl);
   const decide = useActionMutation("decide-suggestion", {
     onError: toastError(t("brief.decideFailed")),
   });
@@ -95,9 +97,9 @@ export default function CitationCard({
           {t("brief.engineLabel")}: <code>{citation.resolution}</code>
         </p>
       ) : null}
-      {citation.sourceUrl ? (
+      {sourceUrl ? (
         <a
-          href={citation.sourceUrl}
+          href={sourceUrl}
           target="_blank"
           rel="noreferrer"
           className="inline-flex items-center gap-1 text-xs text-muted-foreground underline"
@@ -113,7 +115,13 @@ export default function CitationCard({
             className="rounded-lg border border-dashed border-border p-2 text-xs"
           >
             <p>
-              <span className="font-medium">{t("brief.agentProposes")}</span>{" "}
+              <span className="font-medium">
+                {t(
+                  item.author === "user"
+                    ? "brief.userProposes"
+                    : "brief.agentProposes",
+                )}
+              </span>{" "}
               {item.replacement ? (
                 <code>{item.replacement}</code>
               ) : (

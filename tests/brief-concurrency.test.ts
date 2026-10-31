@@ -48,8 +48,12 @@ const verify = (user = OWNER) =>
   as(user, () => verifyBrief.run({ briefId: "b1" }, ctxFor(user)));
 const emit = (user = OWNER) =>
   as(user, () => emitCommitment.run({ briefId: "b1" }, ctxFor(user)));
-const edit = (body: string, user = OWNER) =>
-  as(user, () => updateBrief.run({ briefId: "b1", body }, ctxFor(user)));
+const edit = async (body: string, user = OWNER) => {
+  const expectedUpdatedAt = (await briefRow(holder.db!)).updatedAt;
+  return as(user, () =>
+    updateBrief.run({ briefId: "b1", body, expectedUpdatedAt }, ctxFor(user)),
+  );
+};
 const decide = (
   suggestionId: string,
   decision: "accepted" | "rejected",
@@ -243,6 +247,22 @@ describe("brief writes under concurrency", () => {
     expect(row.commitmentJson).toBeNull();
     const [citation] = await db.select().from(schema.citations);
     expect(citation.status).toBe("stale");
+  });
+
+  it("rejects a draft based on a revision before accepting a suggestion", async () => {
+    const expectedUpdatedAt = (await briefRow(db)).updatedAt;
+    await decide("s1", "accepted");
+    const ledger = await db.select().from(schema.reviewItems);
+    await expect(
+      as(OWNER, () =>
+        updateBrief.run(
+          { briefId: "b1", body: BODY_A, expectedUpdatedAt },
+          ctxFor(OWNER),
+        ),
+      ),
+    ).rejects.toMatchObject({ statusCode: 409, errorCode: "brief_changed" });
+    expect((await briefRow(db)).body).toBe(BODY_A.replace(RAW, REPLACEMENT));
+    expect(await db.select().from(schema.reviewItems)).toEqual(ledger);
   });
 
   it("two verifications of the same snapshot: only the first to commit wins", async () => {

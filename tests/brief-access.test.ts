@@ -174,10 +174,11 @@ describe("brief access by share role", () => {
     it.each([VIEWER, COMMENTER, UNRELATED])(
       "denies %s with 404 and leaves the body intact",
       async (user) => {
+        const expectedUpdatedAt = (await briefRow(db)).updatedAt;
         await expect(
           as(user, () =>
             updateBrief.run(
-              { briefId: "b1", body: "texto ajeno" },
+              { briefId: "b1", body: "texto ajeno", expectedUpdatedAt },
               ctxFor(user),
             ),
           ),
@@ -191,8 +192,12 @@ describe("brief access by share role", () => {
     );
 
     it.each([OWNER, EDITOR])("lets %s edit and marks stale", async (user) => {
+      const expectedUpdatedAt = (await briefRow(db)).updatedAt;
       const result = await as(user, () =>
-        updateBrief.run({ briefId: "b1", body: "texto nuevo" }, ctxFor(user)),
+        updateBrief.run(
+          { briefId: "b1", body: "texto nuevo", expectedUpdatedAt },
+          ctxFor(user),
+        ),
       );
       expect(result).toEqual({ id: "b1", stale: true });
       expect((await briefRow(db)).body).toBe("texto nuevo");
@@ -209,10 +214,11 @@ describe("brief access by share role", () => {
     it.each(["tool", "cli", "http"] as const)(
       "denies caller %s before touching the brief, even for the owner",
       async (caller) => {
+        const expectedUpdatedAt = (await briefRow(db)).updatedAt;
         await expect(
           as(OWNER, () =>
             updateBrief.run(
-              { briefId: "b1", body: "texto del agente" },
+              { briefId: "b1", body: "texto del agente", expectedUpdatedAt },
               { userEmail: OWNER, caller },
             ),
           ),
@@ -271,6 +277,21 @@ describe("brief access by share role", () => {
       const result = await as(user, () => proposeFix.run(args, ctxFor(user)));
       expect(result.state).toBe("pending");
     });
+
+    it.each([
+      ["frontend", "user"],
+      ["tool", "agent"],
+      ["http", "agent"],
+    ] as const)("records caller %s as %s", async (caller, author) => {
+      const result = await as(OWNER, () =>
+        proposeFix.run(args, { userEmail: OWNER, caller }),
+      );
+      const [row] = await db
+        .select()
+        .from(schema.reviewItems)
+        .where(eq(schema.reviewItems.id, result.id));
+      expect(row.author).toBe(author);
+    });
   });
 
   describe("verify-brief", () => {
@@ -317,6 +338,22 @@ describe("brief access by share role", () => {
 
   describe("decide-suggestion", () => {
     const args = { suggestionId: "s1", decision: "accepted" as const };
+
+    it("returns the same error for an inaccessible and missing suggestion", async () => {
+      const errors = await Promise.all(
+        ["s1", "missing"].map((suggestionId) =>
+          as(UNRELATED, () =>
+            decideSuggestion.run({ ...args, suggestionId }, ctxFor(UNRELATED)),
+          ).catch((error) => error),
+        ),
+      );
+      for (const error of errors)
+        expect(error).toMatchObject({
+          statusCode: 404,
+          errorCode: "not_found",
+          message: "Suggestion not found.",
+        });
+    });
 
     it.each([VIEWER, COMMENTER, UNRELATED])(
       "denies %s with 404 and changes nothing",

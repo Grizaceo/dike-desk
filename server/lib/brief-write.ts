@@ -41,6 +41,17 @@ export function nextBriefUpdatedAt(previous: string) {
   return new Date(Math.max(Date.now(), floor)).toISOString();
 }
 
+export function assertBriefRevision(current: string, expected: string) {
+  if (current !== expected)
+    fail(
+      "The brief changed since you started editing. Reload it and edit again.",
+      {
+        errorCode: "brief_changed",
+        statusCode: 409,
+      },
+    );
+}
+
 export function assertBriefSnapshot(
   current: BriefSnapshot,
   expected: BriefSnapshot,

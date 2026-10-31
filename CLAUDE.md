@@ -47,9 +47,9 @@ Citation review for Chilean legal briefs. `/briefs` lists briefs; `/briefs/:brie
 | list-briefs     | Briefs the user can see                             |
 | create-brief    | New brief from text, or `demo: true`                |
 | get-brief       | Text, citations, review ledger                      |
-| update-brief    | Edit title/text (text edits make citations stale)   |
+| update-brief    | Lawyer edits title/text (UI only, from the revision it started) |
 | verify-brief    | Run Diké, replace citation statuses                 |
-| propose-fix     | Agent suggestion for one citation                   |
+| propose-fix     | Suggestion for one citation (author from the caller) |
 | decide-suggestion | Lawyer accepts/rejects (UI only)                  |
 | add-comment     | Comment on a brief or citation                      |
 | emit-commitment | Engine-emitted commitment of verified citations     |

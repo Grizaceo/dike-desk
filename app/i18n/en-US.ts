@@ -105,6 +105,7 @@ const messages = {
       "Diké checks that each provision exists, has citable text and was in force. It does not check that it supports your argument.",
     activityTitle: "Activity",
     agentProposes: "Agent proposes:",
+    userProposes: "You propose:",
     withdraw: "withdraw this citation",
     statusPending: "pending",
     statusAccepted: "accepted",
