@@ -54,6 +54,10 @@ const REPO_ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
 );
+const VERIFICADOR = path.resolve(
+  REPO_ROOT,
+  "verifier/verificar_certificado.py",
+);
 
 // ---------- args ----------
 
@@ -688,7 +692,7 @@ try {
   }
   const certJson = await download(/certificado/i, "certificado.json");
   const escritoTxt = await download(
-    /escrito-del-certificado|certificate.*text/i,
+    /escrito-del-certificado|certificate's text|Descargar el texto del certificado|Download the certificate/i,
     "escrito-del-certificado.txt",
   );
   let commitmentJson = null;
@@ -731,7 +735,7 @@ try {
     const { stdout: vout } = await execFileP(
       "python3",
       [
-        "verifier/verificar_certificado.py",
+        VERIFICADOR,
         "certificado.json",
         "escrito-del-certificado.txt",
         ...(commitmentJson ? ["commitment.json"] : []),
@@ -745,7 +749,7 @@ try {
       await execFileP(
         "python3",
         [
-          "verifier/verificar_certificado.py",
+          VERIFICADOR,
           "certificado.json",
           "escrito-tampered.txt",
         ],

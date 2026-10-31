@@ -295,6 +295,41 @@ describe("emit-commitment", () => {
         signature.commitment_hash,
       );
     });
+
+    it("emits when expectedUpdatedAt is current", async () => {
+      const result = await asLawyer(() =>
+        emitCommitment.run(
+          { briefId: "b1", expectedUpdatedAt: UPDATED_AT },
+          CTX,
+        ),
+      );
+      expect(result.partial).toBe(false);
+      expect(result.certificate!.parcial).toBe(false);
+    });
+
+    it("rejects when the revision changes during the engine run", async () => {
+      holder.runConstancia.mockImplementation(async () => {
+        await holder.db!
+          .update(schema.briefs)
+          .set({ updatedAt: "2099-01-01T00:00:00.000Z" })
+          .where(eq(schema.briefs.id, "b1"));
+        return engine({});
+      });
+      await expect(
+        asLawyer(() =>
+          emitCommitment.run(
+            { briefId: "b1", expectedUpdatedAt: UPDATED_AT },
+            CTX,
+          ),
+        ),
+      ).rejects.toMatchObject({
+        statusCode: 409,
+        errorCode: "brief_changed",
+      });
+      expect((await row()).commitmentJson).toBeNull();
+    });
+
+
   });
 
   describe("not fully verified (partial, D2)", () => {
