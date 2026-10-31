@@ -5,7 +5,13 @@ const authDisabledFlag = process.env.AUTH_DISABLED;
 const authDisabled = ["true", "1"].includes(
   (authDisabledFlag ?? "").trim().toLowerCase(),
 );
-if (process.env.NODE_ENV === "production" && authDisabled) {
+if (
+  (process.env.NODE_ENV === "production" ||
+    // guard:allow-env-credential — hosting deployment context, not a user credential
+    process.env.CONTEXT === "production" ||
+    process.env.VERCEL_ENV === "production") &&
+  authDisabled
+) {
   throw new Error("AUTH_DISABLED must not be set in production.");
 }
 

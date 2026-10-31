@@ -63,4 +63,26 @@ describe("auth plugin production guard", () => {
       expect(factory).toHaveBeenCalledTimes(1);
     },
   );
+
+  it.each(["CONTEXT", "VERCEL_ENV"])(
+    "refuses AUTH_DISABLED when %s is production",
+    async (name) => {
+      vi.stubEnv("NODE_ENV", "development");
+      vi.stubEnv(name, "production");
+      vi.stubEnv("AUTH_DISABLED", "true");
+      await expect(load()).rejects.toThrow(
+        "AUTH_DISABLED must not be set in production.",
+      );
+      expect(factory).not.toHaveBeenCalled();
+    },
+  );
+
+  it("allows AUTH_DISABLED in a deploy preview", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("CONTEXT", "deploy-preview");
+    vi.stubEnv("VERCEL_ENV", undefined);
+    vi.stubEnv("AUTH_DISABLED", "true");
+    await load();
+    expect(factory).toHaveBeenCalledTimes(1);
+  });
 });
