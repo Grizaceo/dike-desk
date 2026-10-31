@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb, schema } from "../server/db/index.js";
+import { isoNow } from "../server/db/timestamps.js";
 import {
   assertBriefSnapshot,
   lockBrief,
@@ -26,6 +27,7 @@ export default defineAction({
     const rows = await getDb().transaction(async (tx) => {
       const locked = await lockBrief(tx, briefId, "editor");
       assertBriefSnapshot(locked, snapshot);
+      const now = isoNow();
       const spans = locate(
         locked.body,
         result.detalles.map((d) => d.cita_raw),
@@ -46,8 +48,8 @@ export default defineAction({
         retrievedAt: detail.fecha_recuperacion || null,
         ownerEmail: locked.ownerEmail,
         orgId: locked.orgId,
+        createdAt: now,
       }));
-      const now = new Date().toISOString();
       await tx
         .update(schema.reviewItems)
         .set({ state: "expired", decidedAt: now })
@@ -82,6 +84,7 @@ export default defineAction({
         body: `${result.meta.citas_verificadas}/${result.meta.total_citas} citations verified against corpus ${result.meta.pack_hash} (as of ${result.meta.as_of}).`,
         ownerEmail,
         orgId: locked.orgId,
+        createdAt: now,
       });
       return rows;
     });

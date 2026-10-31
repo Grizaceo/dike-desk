@@ -7,6 +7,7 @@ import {
   parseFrontmatter,
   parseSkillMetadata,
 } from "@agent-native/core/resources/metadata";
+import { sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { legalTeamSeed } from "../server/lib/legal-team-seed.generated.js";
@@ -161,6 +162,20 @@ describe("legal team resource seeding", () => {
     expect(await db.select().from(schema.dikeDeskSeedMarkers)).toMatchObject([
       { key: "legal-team:v1" },
     ]);
+  });
+
+  it("records the seed marker with an explicit ISO timestamp", async () => {
+    await db.execute(
+      sql.raw(
+        `ALTER TABLE dike_desk_seed_markers ALTER COLUMN applied_at SET DEFAULT 'db-default'`,
+      ),
+    );
+    await seedLegalTeamResources();
+    const [row] = await db.select().from(schema.dikeDeskSeedMarkers);
+    expect(row.appliedAt).toMatch(
+      /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$/,
+    );
+    expect(row.appliedAt).not.toBe("db-default");
   });
 
   it("does nothing when the marker already exists", async () => {

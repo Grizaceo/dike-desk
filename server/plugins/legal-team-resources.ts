@@ -6,6 +6,7 @@ import {
 import { eq } from "drizzle-orm";
 
 import { getDb, schema } from "../db/index.js";
+import { isoNow } from "../db/timestamps.js";
 import { legalTeamSeed } from "../lib/legal-team-seed.generated.js";
 import { ensureAppMigrations } from "./db.js";
 
@@ -24,7 +25,10 @@ export async function seedLegalTeamResources() {
   await ensureResourceStoreReady();
   for (const [path, content] of Object.entries(legalTeamSeed))
     await resourcePutIfAbsent(SHARED_OWNER, path, content, "text/markdown");
-  await db.insert(markers).values({ key: SEED_VERSION }).onConflictDoNothing();
+  await db
+    .insert(markers)
+    .values({ key: SEED_VERSION, appliedAt: isoNow() })
+    .onConflictDoNothing();
 }
 
 export default function legalTeamResources() {

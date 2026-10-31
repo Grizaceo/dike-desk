@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb, schema } from "../server/db/index.js";
+import { isoNow } from "../server/db/timestamps.js";
 import { lockBrief } from "../server/lib/brief-write.js";
 import { commentAuthor, requireUser } from "../server/lib/briefs.js";
 
@@ -59,6 +60,7 @@ export default defineAction({
         state: "pending" as const,
         ownerEmail,
         orgId: brief.orgId,
+        createdAt: isoNow(),
       };
       await tx.insert(schema.reviewItems).values(row);
       return row;

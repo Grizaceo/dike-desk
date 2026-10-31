@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb, schema } from "../server/db/index.js";
+import { isoNow } from "../server/db/timestamps.js";
 import { lockBrief, nextBriefUpdatedAt } from "../server/lib/brief-write.js";
 import { requireUser } from "../server/lib/briefs.js";
 
@@ -63,7 +64,7 @@ export default defineAction({
           statusCode: 409,
         });
 
-      const now = new Date().toISOString();
+      const now = isoNow();
       let body = brief.body;
       if (decision === "accepted") {
         const [citation] = await tx
@@ -117,6 +118,7 @@ export default defineAction({
         body: note?.trim() || decision,
         ownerEmail,
         orgId: brief.orgId,
+        createdAt: now,
       });
       if (decision === "accepted") {
         await tx
