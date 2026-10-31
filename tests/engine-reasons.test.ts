@@ -25,6 +25,29 @@ describe("engineReasonKeys (RJ-10/RJ-11)", () => {
     expect(engineReasonKeys(c({ resolution: "RESOLVED" }))).toEqual([
       "reason.resolvedNotVerified",
     ]);
+    expect(engineReasonKeys(c({ resolution: "NOT_IN_FORCE" }))).toEqual([
+      "reason.notInForce",
+    ]);
+    expect(engineReasonKeys(c({ resolution: "TEMPORAL_UNKNOWN" }))).toEqual([
+      "reason.temporalUnknown",
+    ]);
+    expect(
+      engineReasonKeys(c({ resolution: "PROVENANCE_INCOMPLETE" })),
+    ).toEqual(["reason.provenanceIncomplete"]);
+  });
+
+  it("reuses historical.unavailable for the resolution without duplicating it", () => {
+    expect(
+      engineReasonKeys(c({ resolution: "HISTORICAL_TEXT_UNAVAILABLE" })),
+    ).toEqual(["historical.unavailable"]);
+    expect(
+      engineReasonKeys(
+        c({
+          resolution: "HISTORICAL_TEXT_UNAVAILABLE",
+          historicalTextState: "HISTORICAL_TEXT_UNAVAILABLE",
+        }),
+      ),
+    ).toEqual(["historical.unavailable"]);
   });
 
   it("maps vigencia codes and historical text state, in order", () => {

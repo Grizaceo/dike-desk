@@ -237,6 +237,12 @@ const messages = {
       "Diké did not find it in its corpus. That does not prove the provision does not exist.",
     resolvedNotVerified:
       "Diké identified the provision but could not establish that it was in force on the reference date.",
+    notInForce:
+      "Diké does not record the provision as in force on the reference date.",
+    temporalUnknown:
+      "Diké could not determine whether the provision applied on the reference date. That is not the same as repeal.",
+    provenanceIncomplete:
+      "The provenance of the text in the corpus is incomplete, so Diké does not vouch for it.",
   },
   vigencia: {
     inForce: "Recorded as in force on the reference date.",

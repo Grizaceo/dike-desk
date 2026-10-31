@@ -237,6 +237,12 @@ const messages = {
       "Diké no la encontró en su corpus. Eso no prueba que la norma no exista.",
     resolvedNotVerified:
       "Diké identificó la norma, pero no pudo acreditar su vigencia a la fecha de referencia.",
+    notInForce:
+      "Diké no registra la norma como vigente a la fecha de referencia.",
+    temporalUnknown:
+      "Diké no pudo determinar si la norma regía a la fecha de referencia. Eso no equivale a una derogación.",
+    provenanceIncomplete:
+      "La procedencia del texto en el corpus está incompleta, así que Diké no la acredita.",
   },
   vigencia: {
     inForce: "Figura vigente a la fecha de referencia.",

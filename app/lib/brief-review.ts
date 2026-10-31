@@ -156,6 +156,14 @@ export function engineReasonKeys(
       keys.push("reason.unresolvable");
     else if (citation.resolution === "RESOLVED")
       keys.push("reason.resolvedNotVerified");
+    else if (citation.resolution === "NOT_IN_FORCE")
+      keys.push("reason.notInForce");
+    else if (citation.resolution === "TEMPORAL_UNKNOWN")
+      keys.push("reason.temporalUnknown");
+    else if (citation.resolution === "PROVENANCE_INCOMPLETE")
+      keys.push("reason.provenanceIncomplete");
+    else if (citation.resolution === "HISTORICAL_TEXT_UNAVAILABLE")
+      keys.push("historical.unavailable");
   }
   const vigencia = citation.vigencia;
   if (vigencia === "IN_FORCE") keys.push("vigencia.inForce");
@@ -163,7 +171,10 @@ export function engineReasonKeys(
   else if (vigencia === "UNKNOWN_BEFORE_SNAPSHOT")
     keys.push("vigencia.unknownBeforeSnapshot");
   else if (vigencia === "DESCONOCIDO") keys.push("vigencia.desconocido");
-  if (citation.historicalTextState === "HISTORICAL_TEXT_UNAVAILABLE")
+  if (
+    citation.historicalTextState === "HISTORICAL_TEXT_UNAVAILABLE" &&
+    !keys.includes("historical.unavailable")
+  )
     keys.push("historical.unavailable");
   return keys;
 }
