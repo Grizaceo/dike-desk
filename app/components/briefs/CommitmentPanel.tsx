@@ -232,30 +232,34 @@ export default function CommitmentPanel({ data }: { data: CommitmentData }) {
           )}
 
           {pubkey && (
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
+            <dl>
+              <div className="grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-1.5">
                 <dt className="text-xs text-muted-foreground">
                   {t("commitment.labelPubkey")}
                 </dt>
-                <button
-                  type="button"
-                  onClick={() =>
-                    downloadFile(
-                      "content-signing-key.pub",
-                      pubkey,
-                      "text/plain",
-                    )
-                  }
-                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                >
-                  <IconDownload className="size-3" />{" "}
-                  {t("commitment.downloadPub")}
-                </button>
+                <dd>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      downloadFile(
+                        "content-signing-key.pub",
+                        pubkey,
+                        "text/plain",
+                      )
+                    }
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    <IconDownload className="size-3" />{" "}
+                    {t("commitment.downloadPub")}
+                  </button>
+                </dd>
+                <dd className="col-span-2">
+                  <pre className="overflow-x-auto rounded-md bg-muted/50 p-3 font-mono text-[10px] leading-tight">
+                    {pubkey.trim()}
+                  </pre>
+                </dd>
               </div>
-              <pre className="overflow-x-auto rounded-md bg-muted/50 p-3 font-mono text-[10px] leading-tight">
-                {pubkey.trim()}
-              </pre>
-            </div>
+            </dl>
           )}
         </div>
       )}
