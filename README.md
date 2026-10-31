@@ -79,6 +79,24 @@ Then comment on a citation (e.g. «esto es el Código del Trabajo» on
 «artículo 60»): the agent answers on the page and proposes a fix; accept it
 and the agent verifies again.
 
+## Verification on Netlify
+
+The Diké engine does not run inside the Netlify deploy. `verify-brief` and
+`emit-commitment` call `runConstancia`, which starts the engine only when
+`DIKE_DOCKER_IMAGE` or `DIKE_BIN` is set. A serverless function has neither,
+and the adapter waits up to 120 seconds, which is longer than a Netlify
+function is allowed to run. On that deploy both actions return 503
+(`dike_unavailable`).
+
+Two ways to verify a brief:
+
+1. **Run the demo locally.** Build the engine image or install `DIKE_BIN`, then
+   start the app with `pnpm dev`, as in [Run it](#run-it).
+2. **Run the engine as a separate service** with its own URL and its own
+   timeout, and point the app at that service. That is not implemented. The
+   app only starts the engine as a local binary or a Docker container on the
+   same machine.
+
 ## Signed commitments
 
 Signing needs the local engine (`DIKE_BIN=dike`, not Docker) and an Ed25519
