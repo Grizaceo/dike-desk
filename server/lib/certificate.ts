@@ -24,7 +24,7 @@ export function buildCertificate(input: {
   titulo: string;
   body: string;
   commitment: unknown;
-  sellado: boolean;
+  commitment_sellado: boolean;
   packHash: string;
   asOf: string;
   asOfOrigen: AsOfOrigen;
@@ -52,7 +52,7 @@ export function buildCertificate(input: {
       normalizacion: BRIEF_NORMALIZATION,
     },
     commitment_hash: commitmentHash(input.commitment),
-    sellado: input.sellado,
+    commitment_sellado: input.commitment_sellado,
     pack_hash: input.packHash,
     as_of: input.asOf,
     as_of_origen: input.asOfOrigen,

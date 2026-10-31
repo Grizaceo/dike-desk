@@ -65,7 +65,13 @@ def main(argv: list[str]) -> int:
     commitment_path = argv[3] if len(argv) == 4 else None
 
     try:
-        certificado = json.loads(Path(cert_path).read_text(encoding="utf-8"))
+        try:
+            certificado = json.loads(
+                Path(cert_path).read_text(encoding="utf-8")
+            )
+        except UnicodeDecodeError:
+            print("NO SE PUDO EVALUAR: el certificado no es UTF-8.", file=sys.stderr)
+            return 2
     except OSError as exc:
         return no_evaluable(f"no se pudo leer el certificado ({exc})")
     except json.JSONDecodeError as exc:
@@ -87,7 +93,11 @@ def main(argv: list[str]) -> int:
         return no_evaluable("el certificado no tiene escrito.sha256")
 
     try:
-        texto = Path(escrito_path).read_text(encoding="utf-8")
+        try:
+            texto = Path(escrito_path).read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            print("NO SE PUDO EVALUAR: el escrito no es UTF-8.", file=sys.stderr)
+            return 2
     except OSError as exc:
         return no_evaluable(f"no se pudo leer el escrito ({exc})")
 
@@ -112,6 +122,8 @@ def main(argv: list[str]) -> int:
             commitment = json.loads(
                 Path(commitment_path).read_text(encoding="utf-8")
             )
+        except UnicodeDecodeError:
+            return no_evaluable("el commitment no es UTF-8")
         except OSError as exc:
             return no_evaluable(f"no se pudo leer el commitment ({exc})")
         except json.JSONDecodeError as exc:
@@ -131,6 +143,8 @@ def main(argv: list[str]) -> int:
             coincide = False
 
     print(
+        "certificado.json no está sellado: esta comprobación no prueba que el "
+        "certificado sea auténtico ni quién lo emitió.\n"
         "No comprobado: el sello de integridad del commitment (eso lo hace "
         "verificar_tercero.py, del repositorio del motor Diké) ni el "
         "argumento jurídico del escrito."

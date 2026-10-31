@@ -94,7 +94,7 @@ const messages = {
     verifyButton: "Verificar con Diké",
     verifyProgress: "Verificando…",
     emitCommitment: "Emitir certificado de verificación",
-    committedSigned: "Certificado de verificación emitido, con sello de integridad",
+    committedSigned: "Certificado de verificación emitido. El commitment lleva sello de integridad.",
     committedUnsigned: "Certificado de verificación emitido (sin sello)",
     verifyFailed: "La verificación falló.",
     saveFailed: "No se pudo guardar el escrito.",
@@ -160,13 +160,13 @@ const messages = {
     partialConfirm: "Emitir certificado parcial",
     partialCancel: "Volver a revisar",
     privacyConfigured:
-      "Privacidad: el motor Diké corre en este equipo y sin red. El agente envía el texto del escrito y tus comentarios a su proveedor de modelo: {{engine}} · {{model}}. Salvo que ese modelo corra en tu equipo, el texto sale de él.",
+      "Privacidad: el motor Diké corre en este equipo (con Docker, además, sin red). El agente envía el texto del escrito y tus comentarios a su proveedor de modelo: {{engine}} · {{model}}. Salvo que ese modelo corra en tu equipo, el texto sale de él.",
     privacyCustomEndpoint:
       "Usa un endpoint propio (OPENAI_BASE_URL): revisa en Ajustes del agente a qué servicio apunta.",
     privacyNotConfigured:
-      "Privacidad: el motor Diké corre en este equipo y sin red. El agente no tiene un proveedor de modelo configurado.",
+      "Privacidad: el motor Diké corre en este equipo (con Docker, además, sin red). El agente no tiene un proveedor de modelo configurado.",
     privacyUnknown:
-      "Privacidad: el motor Diké corre en este equipo y sin red. El agente envía el texto del escrito y tus comentarios a su proveedor de modelo; revisa cuál en Ajustes del agente.",
+      "Privacidad: el motor Diké corre en este equipo (con Docker, además, sin red). El agente envía el texto del escrito y tus comentarios a su proveedor de modelo; revisa cuál en Ajustes del agente.",
   },
   briefs: {
     title: "Escritos",
@@ -213,6 +213,10 @@ const messages = {
     sealTitle: "Sello de integridad",
     badgeSealed: "Sello de integridad · llave {{key_id}}",
     badgeUnsealed: "Sin sello",
+    sealScope:
+      "El sello cubre solo commitment.json. certificado.json (título, huella del escrito, lista de citas y carácter parcial) no está sellado: cualquiera puede editarlo. verificar_certificado.py comprueba que el texto y el commitment coinciden con lo que dice el certificado, no que el certificado sea auténtico.",
+    certPrivacy:
+      "certificado.json incluye el título del escrito, su huella y el texto de cada cita. Compártelo solo con quien ya pueda ver el escrito: con la huella, cualquiera que tenga un borrador puede comprobar si es este.",
     sealExplanation:
       "El sello prueba que commitment.json no cambió desde que se selló con esta llave. No identifica a la persona que emitió el certificado, no da fecha cierta y no es firma electrónica avanzada en el sentido de la Ley 19.799.",
     demoKey:
@@ -228,7 +232,7 @@ const messages = {
     labelAlgorithm: "Algoritmo",
     labelRole: "Rol",
     labelPubkey: "Clave pública (content-signing-key.pub)",
-    offlineStep2: "Verificar el commitment sellado",
+    offlineStep2: "Comprobar el sello de integridad del commitment",
   },
   reason: {
     ambiguous:
@@ -272,14 +276,12 @@ const messages = {
     not_verified: "Verifica el texto actual antes de emitir el certificado.",
     partial_needs_confirmation:
       "Hay citas sin verificar: confirma la emisión parcial en la pantalla.",
-    partial_confirmation_ui_only:
-      "Solo el abogado puede confirmar una emisión parcial, desde la pantalla.",
     commitment_mismatch:
       "El resultado del motor no coincide con la verificación guardada. Verifica de nuevo antes de emitir.",
     commitment_not_emitted:
       "El motor no emitió el certificado para este escrito.",
     commitment_hash_mismatch:
-      "La huella del commitment no coincide con la del sello. No se guardó el certificado.",
+      "La huella commitment_hash no coincide con la del sello. No se guardó el certificado.",
     already_decided: "Esta sugerencia ya fue decidida.",
     stale_citation: "El escrito cambió bajo esta sugerencia. Verifica de nuevo.",
     brief_changed:

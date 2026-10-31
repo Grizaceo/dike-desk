@@ -110,7 +110,7 @@ const messages = {
       "in force on {{date}} (today's date, not necessarily the date of the facts)",
     asOfLabel: "Reference date (in force on)",
     asOfHint:
-      "Leave it empty and Diké uses today's date. For a dismissal, the separation date usually matters.",
+      "Leave it empty and Diké uses today's date. You can choose another one, for example the date of the facts.",
     metaChecked:
       "Diké checks the citations to statutes that it detects (not case law or scholarship): it confirms that each provision exists in its corpus, has citable text and was in force on the reference date. It does not confirm that the provision supports your argument or that the paraphrase is faithful.",
     undetectedOne:
@@ -213,6 +213,10 @@ const messages = {
     sealTitle: "Integrity seal",
     badgeSealed: "Integrity seal · key {{key_id}}",
     badgeUnsealed: "No seal",
+    sealScope:
+      "The seal covers commitment.json only. certificado.json (title, brief fingerprint, citation list and partial flag) is not sealed: anyone can edit it. verificar_certificado.py checks that the text and the commitment match what the certificate says, not that the certificate is authentic.",
+    certPrivacy:
+      "certificado.json includes the brief's title, its fingerprint and the text of every citation. Share it only with whoever can already see the brief: with the fingerprint, anyone holding a draft can check whether it is this one.",
     sealExplanation:
       "The seal proves that commitment.json has not changed since it was sealed with this key. It does not identify the person who issued the certificate, does not give a certain date, and is not an advanced electronic signature under Chilean Law 19.799.",
     demoKey:
@@ -228,7 +232,7 @@ const messages = {
     labelAlgorithm: "Algorithm",
     labelRole: "Role",
     labelPubkey: "Public key (content-signing-key.pub)",
-    offlineStep2: "Verify the sealed commitment",
+    offlineStep2: "Check the commitment\u2019s integrity seal",
   },
   reason: {
     ambiguous:
@@ -272,8 +276,6 @@ const messages = {
     not_verified: "Verify the current text before issuing the certificate.",
     partial_needs_confirmation:
       "There are unverified citations: confirm the partial issue on screen.",
-    partial_confirmation_ui_only:
-      "Only the lawyer can confirm a partial issue, from the screen.",
     commitment_mismatch:
       "The engine result does not match the stored verification. Verify again before issuing.",
     commitment_not_emitted:

@@ -162,8 +162,8 @@ provisions support the legal argument.
 
 ## Privacy
 
-The Diké engine runs locally with no network (Docker `--network none`, or a
-local binary). The agent's model provider receives the brief text and the
+With Docker the Diké engine runs with `--network none`; a local binary
+(`DIKE_BIN`, which sealing needs) gets no network block from the app. The agent's model provider receives the brief text and the
 comments: the brief page names the configured provider, and the model is
 configurable — it can be a local one (for example Ollama). lexo.md's rule
 against sending case data to other external tools is an instruction to the
@@ -181,6 +181,11 @@ model, not a technical control.
 - The brief fingerprint lives in the dike-desk wrapper certificate, not
   inside the engine-sealed commitment (see the engine pending item in
   [`AGENTS.md`](AGENTS.md)).
+- The seal covers `commitment.json` only. `certificado.json` (title, brief
+  fingerprint, citation list and partial flag) is not sealed: anyone can
+  edit it. `verificar_certificado.py` checks that the text and the
+  commitment match what the certificate says, not that the certificate is
+  authentic.
 
 ## Scripted end-to-end demo
 
@@ -223,7 +228,7 @@ reported inside `summary.json`.
 
 - Verify a brief with the local Diké engine at a reference date the lawyer
   chooses: every detected citation is marked in place with the engine's
-  reason (on this synthetic brief: 4 verified, 1 ambiguous, 1 refused).
+  reason (on this synthetic brief: 4 exist and are in force, 1 ambiguous, 1 could not verify).
 - The review loop: comments, agent proposals, lawyer-only decisions and a
   ledger that keeps rejected suggestions.
 - The verification certificate: brief fingerprint, the full citation list, a

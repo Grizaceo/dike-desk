@@ -286,6 +286,12 @@ export default function CommitmentPanel({
           <p className="text-xs text-muted-foreground">
             {t("commitment.hashPrivacy")}
           </p>
+          <p className="text-xs text-muted-foreground">
+            {t("commitment.sealScope")}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {t("commitment.certPrivacy")}
+          </p>
         </div>
       ) : (
         /* Legacy rows emitted before certificates existed. */
