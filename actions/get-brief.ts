@@ -48,6 +48,7 @@ export default defineAction({
         .select({
           id: reviewItems.id,
           citationId: reviewItems.citationId,
+          citationRaw: reviewItems.citationRaw,
           kind: reviewItems.kind,
           author: reviewItems.author,
           body: reviewItems.body,

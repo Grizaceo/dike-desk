@@ -24,9 +24,10 @@ export default defineAction({
     const ownerEmail = requireUser(ctx);
     const id = await getDb().transaction(async (tx) => {
       const brief = await lockBrief(tx, args.briefId, "commenter");
+      let citationRaw: string | null = null;
       if (args.citationId) {
         const [citation] = await tx
-          .select({ id: schema.citations.id })
+          .select({ id: schema.citations.id, raw: schema.citations.raw })
           .from(schema.citations)
           .where(
             and(
@@ -40,11 +41,13 @@ export default defineAction({
             errorCode: "not_found",
             statusCode: 404,
           });
+        citationRaw = citation.raw;
       }
       const item = {
         id: crypto.randomUUID(),
         briefId: args.briefId,
         citationId: args.citationId ?? null,
+        citationRaw,
         kind: "comment" as const,
         author: commentAuthor(ctx),
         body: args.body,

@@ -74,6 +74,9 @@ export const reviewItems = pgTable("review_items", {
   id: text("id").primaryKey(),
   briefId: text("brief_id").notNull(),
   citationId: text("citation_id"),
+  // The citation text at the time of the ledger row. Survives re-verification
+  // even when the citation row itself is gone.
+  citationRaw: text("citation_raw"),
   kind: text("kind", {
     enum: ["comment", "suggestion", "decision", "agent_note"],
   }).notNull(),

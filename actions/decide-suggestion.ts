@@ -66,17 +66,21 @@ export default defineAction({
 
       const now = isoNow();
       let body = brief.body;
+      let citationRaw = item.citationRaw;
+      const [citation] = item.citationId
+        ? await tx
+            .select()
+            .from(citations)
+            .where(
+              and(
+                eq(citations.id, item.citationId),
+                eq(citations.briefId, brief.id),
+              ),
+            )
+            .limit(1)
+        : [];
+      if (citation) citationRaw = citation.raw;
       if (decision === "accepted") {
-        const [citation] = await tx
-          .select()
-          .from(citations)
-          .where(
-            and(
-              eq(citations.id, item.citationId ?? ""),
-              eq(citations.briefId, brief.id),
-            ),
-          )
-          .limit(1);
         if (
           !citation ||
           citation.status === "stale" ||
@@ -113,6 +117,7 @@ export default defineAction({
         id: crypto.randomUUID(),
         briefId: item.briefId,
         citationId: item.citationId,
+        citationRaw,
         kind: "decision",
         author: "user",
         body: note?.trim() || decision,

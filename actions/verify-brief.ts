@@ -1,5 +1,5 @@
 import { defineAction } from "@agent-native/core/action";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb, schema } from "../server/db/index.js";
@@ -28,28 +28,50 @@ export default defineAction({
       const locked = await lockBrief(tx, briefId, "editor");
       assertBriefSnapshot(locked, snapshot);
       const now = isoNow();
+      const existing = await tx
+        .select({
+          id: schema.citations.id,
+          raw: schema.citations.raw,
+        })
+        .from(schema.citations)
+        .where(eq(schema.citations.briefId, briefId))
+        .orderBy(asc(schema.citations.position));
+      const previousIds = new Map<string, string>();
+      const seen = new Map<string, number>();
+      for (const row of existing) {
+        const occurrence = seen.get(row.raw) ?? 0;
+        seen.set(row.raw, occurrence + 1);
+        previousIds.set(`${occurrence}\0${row.raw}`, row.id);
+      }
       const spans = locate(
         locked.body,
         result.detalles.map((d) => d.cita_raw),
       );
-      const rows = result.detalles.map((detail, index) => ({
-        id: crypto.randomUUID(),
-        briefId,
-        position: index,
-        raw: detail.cita_raw,
-        start: spans[index]?.start ?? -1,
-        end: spans[index]?.end ?? -1,
-        status: statusFor(detail),
-        resolution: detail.resolucion || null,
-        gid: detail.gid || null,
-        label: detail.cuerpo ?? null,
-        textSha256: detail.texto_hash ?? null,
-        sourceUrl: detail.fuente_url || null,
-        retrievedAt: detail.fecha_recuperacion || null,
-        ownerEmail: locked.ownerEmail,
-        orgId: locked.orgId,
-        createdAt: now,
-      }));
+      const nextSeen = new Map<string, number>();
+      const rows = result.detalles.map((detail, index) => {
+        const occurrence = nextSeen.get(detail.cita_raw) ?? 0;
+        nextSeen.set(detail.cita_raw, occurrence + 1);
+        return {
+          id:
+            previousIds.get(`${occurrence}\0${detail.cita_raw}`) ??
+            crypto.randomUUID(),
+          briefId,
+          position: index,
+          raw: detail.cita_raw,
+          start: spans[index]?.start ?? -1,
+          end: spans[index]?.end ?? -1,
+          status: statusFor(detail),
+          resolution: detail.resolucion || null,
+          gid: detail.gid || null,
+          label: detail.cuerpo ?? null,
+          textSha256: detail.texto_hash ?? null,
+          sourceUrl: detail.fuente_url || null,
+          retrievedAt: detail.fecha_recuperacion || null,
+          ownerEmail: locked.ownerEmail,
+          orgId: locked.orgId,
+          createdAt: now,
+        };
+      });
       await tx
         .update(schema.reviewItems)
         .set({ state: "expired", decidedAt: now })

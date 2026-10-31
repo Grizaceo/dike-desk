@@ -30,7 +30,11 @@ export default defineAction({
     const item = await getDb().transaction(async (tx) => {
       const brief = await lockBrief(tx, args.briefId, "commenter");
       const [citation] = await tx
-        .select({ id: schema.citations.id, status: schema.citations.status })
+        .select({
+          id: schema.citations.id,
+          status: schema.citations.status,
+          raw: schema.citations.raw,
+        })
         .from(schema.citations)
         .where(
           and(
@@ -53,6 +57,7 @@ export default defineAction({
         id: crypto.randomUUID(),
         briefId: args.briefId,
         citationId: args.citationId,
+        citationRaw: citation.raw,
         kind: "suggestion" as const,
         author: commentAuthor(ctx),
         body: args.rationale,

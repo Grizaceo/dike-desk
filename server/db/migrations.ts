@@ -91,6 +91,18 @@ export function isoTimestampMigrationStatements() {
   ];
 }
 
+function citationAnchorStatements() {
+  return [
+    `ALTER TABLE review_items ADD COLUMN IF NOT EXISTS citation_raw TEXT`,
+    `UPDATE review_items AS ri
+     SET citation_raw = c.raw
+     FROM citations AS c
+     WHERE ri.citation_id = c.id
+       AND ri.brief_id = c.brief_id
+       AND ri.citation_raw IS NULL`,
+  ];
+}
+
 export async function applyIsoTimestampMigration(exec: DbExec) {
   if (!exec.transaction) {
     throw new Error(
@@ -98,7 +110,10 @@ export async function applyIsoTimestampMigration(exec: DbExec) {
     );
   }
   await exec.transaction(async (tx) => {
-    for (const statement of isoTimestampMigrationStatements())
+    for (const statement of [
+      ...isoTimestampMigrationStatements(),
+      ...citationAnchorStatements(),
+    ])
       await tx.execute(statement);
   });
 }
@@ -178,7 +193,7 @@ CREATE INDEX IF NOT EXISTS review_items_brief_idx ON review_items (brief_id, cre
   },
   {
     version: 3,
-    name: "normalize-iso-timestamps",
+    name: "iso-timestamps-and-citation-anchors",
     // Empty object: no follow-up SQL. The runner would execute a string
     // outside the transaction opened by `run`.
     sql: {},
