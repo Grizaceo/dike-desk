@@ -56,11 +56,20 @@ export function VerdictBadge({ verdict }: { verdict: string | null }) {
         {t("verdict.notVerified")}
       </span>
     );
-  return verdict === "TODAS_VERIFICADAS" ? (
-    <StatusBadge status="verified" />
-  ) : (
-    <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-300">
-      {t("verdict.hasProblems")}
+  if (verdict === "TODAS_VERIFICADAS") return <StatusBadge status="verified" />;
+  const label =
+    verdict === "SIN_CITAS"
+      ? t("verdict.noCitations")
+      : verdict === "SIN_CORPUS"
+        ? t("verdict.noCorpus")
+        : t("verdict.hasProblems");
+  const style =
+    verdict === "SIN_CITAS"
+      ? STATUS_STYLES.ambiguous.badge
+      : STATUS_STYLES.refused.badge;
+  return (
+    <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", style)}>
+      {label}
     </span>
   );
 }

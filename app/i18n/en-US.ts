@@ -182,6 +182,8 @@ const messages = {
   verdict: {
     notVerified: "Not verified",
     hasProblems: "Has problems",
+    noCitations: "No citations",
+    noCorpus: "No corpus",
   },
   root: {
     commandActions: "Actions",

@@ -6,7 +6,12 @@ const migrate = runMigrations(MIGRATIONS, { table: "dike_desk_migrations" });
 let migrations: Promise<void> | undefined;
 
 export function ensureAppMigrations() {
-  return (migrations ??= Promise.resolve(migrate(undefined)));
+  return (migrations ??= Promise.resolve()
+    .then(() => migrate(undefined))
+    .catch((error) => {
+      migrations = undefined;
+      throw error;
+    }));
 }
 
 export default ensureAppMigrations;

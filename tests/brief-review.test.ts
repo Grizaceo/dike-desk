@@ -1,5 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
+vi.mock("@agent-native/core/client/i18n", () => ({
+  useT: () => (key: string) => key,
+}));
+
+import {
+  STATUS_STYLES,
+  VerdictBadge,
+} from "../app/components/briefs/StatusBadge.js";
+import enUS from "../app/i18n/en-US.js";
+import esES from "../app/i18n/es-ES.js";
 import {
   bodySegments,
   getActivityItems,
@@ -139,5 +149,61 @@ describe("safeExternalUrl", () => {
     [null, null],
   ])("filters %s", (input, expected) => {
     expect(safeExternalUrl(input)).toBe(expected);
+  });
+});
+
+describe("VerdictBadge", () => {
+  it("distinguishes SIN_CITAS and SIN_CORPUS from CON_PROBLEMAS and never marks them verified", () => {
+    const none = VerdictBadge({ verdict: null });
+    expect(none.props.children).toBe("verdict.notVerified");
+
+    const ok = VerdictBadge({ verdict: "TODAS_VERIFICADAS" });
+    expect(ok.props.status).toBe("verified");
+
+    const problems = VerdictBadge({ verdict: "CON_PROBLEMAS" });
+    expect(problems.props.children).toBe("verdict.hasProblems");
+    expect(problems.props.className).toContain(STATUS_STYLES.refused.badge);
+
+    const noCitations = VerdictBadge({ verdict: "SIN_CITAS" });
+    expect(noCitations.props.children).toBe("verdict.noCitations");
+    expect(noCitations.props.className).toContain(
+      STATUS_STYLES.ambiguous.badge,
+    );
+
+    const noCorpus = VerdictBadge({ verdict: "SIN_CORPUS" });
+    expect(noCorpus.props.children).toBe("verdict.noCorpus");
+    expect(noCorpus.props.className).toContain(STATUS_STYLES.refused.badge);
+
+    expect(enUS.verdict).toEqual({
+      notVerified: "Not verified",
+      hasProblems: "Has problems",
+      noCitations: "No citations",
+      noCorpus: "No corpus",
+    });
+    expect(esES.verdict).toEqual({
+      notVerified: "No verificado",
+      hasProblems: "Con problemas",
+      noCitations: "Sin citas",
+      noCorpus: "Sin corpus",
+    });
+  });
+});
+
+describe("ensureAppMigrations", () => {
+  it("clears the cached promise after a failure so the next call can retry", async () => {
+    vi.resetModules();
+    const run = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("transient db error"))
+      .mockResolvedValueOnce(undefined);
+    vi.doMock("@agent-native/core/db", () => ({
+      runMigrations: () => run,
+    }));
+    const { ensureAppMigrations } = await import("../server/plugins/db.js");
+    await expect(ensureAppMigrations()).rejects.toThrow("transient db error");
+    await expect(ensureAppMigrations()).resolves.toBeUndefined();
+    await expect(ensureAppMigrations()).resolves.toBeUndefined();
+    expect(run).toHaveBeenCalledTimes(2);
+    vi.doUnmock("@agent-native/core/db");
   });
 });
