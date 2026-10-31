@@ -1,9 +1,20 @@
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createPublicKey } from "node:crypto";
+import { constants } from "node:fs";
+import {
+  chmod,
+  lstat,
+  mkdir,
+  mkdtemp,
+  open,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { fail } from "@agent-native/core/action";
+import { z } from "zod";
 
 import type { CitationStatus } from "../db/schema.js";
 
@@ -16,28 +27,42 @@ import type { CitationStatus } from "../db/schema.js";
 //                            network disabled (recommended, works on any OS)
 //   DIKE_BIN=dike            run a locally installed engine (Linux)
 
-export type DikeDetail = {
-  cita_raw: string;
-  gid: string;
-  estado: "VERIFICADA" | "FALLO";
-  resolucion: string;
-  cuerpo: string | null;
-  texto_hash: string | null;
-  vigencia: string;
-  fuente_url: string;
-  fecha_recuperacion: string;
-};
+const detailSchema = z.object({
+  cita_raw: z.string(),
+  estado: z.enum(["VERIFICADA", "FALLO"]),
+  gid: z.string().nullish(),
+  resolucion: z.string().nullish(),
+  cuerpo: z.string().nullish(),
+  texto_hash: z.string().nullish(),
+  vigencia: z.string().nullish(),
+  fuente_url: z.string().nullish(),
+  fecha_recuperacion: z.string().nullish(),
+});
 
-export type DikeResult = {
-  veredicto: "TODAS_VERIFICADAS" | "CON_PROBLEMAS";
-  mensaje: string;
-  alcance: string;
-  problemas: string[];
-  detalles: DikeDetail[];
-  meta: {
-    as_of: string;
-    fecha_constancia: string;
-    pack_hash: string;
+const resultSchema = z.object({
+  veredicto: z.enum([
+    "TODAS_VERIFICADAS",
+    "CON_PROBLEMAS",
+    "SIN_CITAS",
+    "SIN_CORPUS",
+  ]),
+  mensaje: z.string(),
+  alcance: z.string().optional(),
+  problemas: z.array(z.string()).default([]),
+  detalles: z.array(detailSchema),
+  meta: z.object({
+    as_of: z.string(),
+    fecha_constancia: z.string(),
+    pack_hash: z.string(),
+    total_citas: z.number().int().nonnegative().optional(),
+    citas_verificadas: z.number().int().nonnegative().optional(),
+    citas_fallidas: z.number().int().nonnegative().optional(),
+  }),
+});
+
+export type DikeDetail = z.infer<typeof detailSchema>;
+export type DikeResult = Omit<z.infer<typeof resultSchema>, "meta"> & {
+  meta: z.infer<typeof resultSchema>["meta"] & {
     total_citas: number;
     citas_verificadas: number;
     citas_fallidas: number;
@@ -48,18 +73,28 @@ export type DikeRun = {
   result: DikeResult;
   commitment: unknown | null;
   signature: unknown | null;
+  /** PEM-encoded public content-signing key (only present when --sign was used). */
+  pubkey: string | null;
 };
 
 const TIMEOUT_MS = 120_000;
 const MAX_BODY_BYTES = 400_000;
+const MAX_JSON_BYTES = 8 * 1024 * 1024;
+const MAX_PUBKEY_BYTES = 16 * 1024;
+const IMAGE_HOME = "/home/dike";
 
-function run(cmd: string, args: string[]) {
+function run(cmd: string, args: string[], env?: NodeJS.ProcessEnv) {
   return new Promise<{ code: number; stdout: string; stderr: string }>(
     (resolve) => {
       execFile(
         cmd,
         args,
-        { timeout: TIMEOUT_MS, maxBuffer: 16 * 1024 * 1024, windowsHide: true },
+        {
+          timeout: TIMEOUT_MS,
+          maxBuffer: 16 * 1024 * 1024,
+          windowsHide: true,
+          ...(env ? { env } : {}),
+        },
         (error, stdout, stderr) => {
           const code =
             error && typeof (error as { code?: unknown }).code === "number"
@@ -72,6 +107,70 @@ function run(cmd: string, args: string[]) {
       );
     },
   );
+}
+
+function localEngineEnv() {
+  return Object.fromEntries(
+    Object.entries(process.env).filter(
+      ([key]) =>
+        [
+          "PATH",
+          "HOME",
+          "LANG",
+          "LANGUAGE",
+          "TZ",
+          "TMPDIR",
+          "VIRTUAL_ENV",
+        ].includes(key) || /^(LC_|PYTHON|DIKE_|LEXO_)/.test(key),
+    ),
+  );
+}
+
+function badOutput(): never {
+  return fail("Diké engine returned unsafe or malformed output.", {
+    errorCode: "dike_bad_output",
+    statusCode: 502,
+  });
+}
+
+let dockerUserCache: Promise<string> | null = null;
+
+/**
+ * Identity the container runs as so it can read the 0700 work dir and write
+ * the 0700 output dir we own. Rootless Docker maps container root to our host
+ * uid; rootful Docker needs our own uid:gid. Fails closed when undetermined.
+ */
+function dockerUser(): Promise<string> {
+  dockerUserCache ??= (async () => {
+    const { code, stdout } = await run("docker", [
+      "info",
+      "--format",
+      "{{json .SecurityOptions}}",
+    ]);
+    let options: unknown;
+    try {
+      options = JSON.parse(stdout);
+    } catch {
+      options = null;
+    }
+    if (
+      code !== 0 ||
+      !Array.isArray(options) ||
+      !options.every((o) => typeof o === "string")
+    ) {
+      dockerUserCache = null;
+      fail("Could not determine the Docker security mode.", {
+        errorCode: "dike_docker_unavailable",
+        statusCode: 503,
+      });
+    }
+    if ((options as string[]).some((o) => /(^|,)name=rootless(,|$)/.test(o)))
+      return "0:0";
+    if (typeof process.getuid === "function" && process.getgid)
+      return `${process.getuid()}:${process.getgid()}`;
+    return "0:0";
+  })();
+  return dockerUserCache;
 }
 
 /** Run `dike constancia` on a brief body; optionally emit the commitment. */
@@ -93,10 +192,19 @@ export async function runConstancia(
     );
   }
 
+  const docker = Boolean(image);
+  const user = docker ? await dockerUser() : null;
   const work = await mkdtemp(path.join(tmpdir(), "dike-desk-"));
   try {
-    await writeFile(path.join(work, "brief.md"), body, "utf8");
-    const docker = Boolean(image);
+    await chmod(work, 0o700);
+    await writeFile(path.join(work, "brief.md"), body, {
+      encoding: "utf8",
+      mode: 0o600,
+      flag: "wx",
+    });
+    if (opts.emitCommitment) {
+      await mkdir(path.join(work, "out"), { mode: 0o700 });
+    }
     const root = docker ? "/work" : work;
     const args = ["constancia", `${root}/brief.md`, "--json"];
     if (opts.emitCommitment) {
@@ -109,54 +217,160 @@ export async function runConstancia(
       }
     }
 
-    const { code, stdout, stderr } = docker
+    const { code, stdout } = docker
       ? await run("docker", [
           "run",
           "--rm",
+          "--pull=never",
           "--network",
           "none",
-          "-v",
-          `${work}:/work`,
+          "--user",
+          user!,
+          "--env",
+          `HOME=${IMAGE_HOME}`,
+          // --mount takes the host path verbatim, so a Windows path such as
+          // C:\Users\...\Temp\dike-desk-x needs no conversion (unlike -v,
+          // which splits on the drive-letter colon).
+          "--mount",
+          `type=bind,source=${work},target=/work`,
           image!,
           "dike",
           ...args,
         ])
-      : await run(bin!, args);
+      : await run(bin!, args, localEngineEnv());
 
     // 0 = all verified, 1 = some were not. Anything else is an engine failure.
+    // The engine's stderr can echo brief text or paths: it is never surfaced.
     if (code !== 0 && code !== 1) {
-      fail(`Diké engine failed (exit ${code}). ${stderr.slice(-400)}`, {
+      fail(`Diké engine failed (exit ${code}).`, {
         errorCode: "dike_failed",
         statusCode: 502,
       });
     }
-    let result: DikeResult;
+    let parsed: unknown;
     try {
-      result = JSON.parse(stdout) as DikeResult;
+      parsed = JSON.parse(stdout);
     } catch {
-      fail("Diké engine returned output that is not JSON.", {
-        errorCode: "dike_bad_output",
-        statusCode: 502,
-      });
+      return badOutput();
     }
+    const validated = resultSchema.safeParse(parsed);
+    if (!validated.success) return badOutput();
+    const value = validated.data;
+    const counters = {
+      total_citas: value.detalles.length,
+      citas_verificadas: value.detalles.filter((d) => d.estado === "VERIFICADA")
+        .length,
+      citas_fallidas: value.detalles.filter((d) => d.estado === "FALLO").length,
+    };
+    for (const key of Object.keys(counters) as (keyof typeof counters)[]) {
+      if (value.meta[key] !== undefined && value.meta[key] !== counters[key])
+        return badOutput();
+    }
+    const result: DikeResult = {
+      ...value,
+      meta: { ...value.meta, ...counters },
+    };
 
     let commitment: unknown = null;
     let signature: unknown = null;
+    let pubkey: string | null = null;
     if (opts.emitCommitment) {
-      commitment = await readJson(path.join(work, "out", "commitment.json"));
-      signature = await readJson(path.join(work, "out", "commitment.sig.json"));
+      const out = path.join(work, "out");
+      await assertPlainDirectory(out);
+      commitment = await readJson(path.join(out, "commitment.json"));
+      signature = await readJson(path.join(out, "commitment.sig.json"));
+      // The public key is only written when --sign was passed. Reading it here
+      // lets the UI offer the full offline-verification kit without the lawyer
+      // having to go back to the engine.
+      pubkey = await readPublicKey(path.join(out, "content-signing-key.pub"));
     }
-    return { result, commitment, signature };
+    return { result, commitment, signature, pubkey };
   } finally {
-    await rm(work, { recursive: true, force: true });
+    // A failed cleanup must not turn a finished verification into an error,
+    // but it leaves a copy of the brief on disk.
+    await rm(work, { recursive: true, force: true }).catch(() =>
+      console.error("[dike] could not remove a temporary work directory"),
+    );
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isMissing(error: unknown) {
+  return (error as { code?: unknown })?.code === "ENOENT";
+}
+
+async function assertPlainDirectory(dir: string) {
+  let info;
+  try {
+    info = await lstat(dir);
+  } catch {
+    return badOutput();
+  }
+  if (!info.isDirectory()) badOutput();
+}
+
+/** Read a regular, non-symlink file of bounded size, or null if absent. */
+async function readBounded(file: string, maxBytes: number) {
+  let before;
+  try {
+    before = await lstat(file);
+  } catch (error) {
+    if (isMissing(error)) return null;
+    return badOutput();
+  }
+  if (!before.isFile() || before.size > maxBytes) badOutput();
+  let handle;
+  try {
+    handle = await open(file, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
+  } catch (error) {
+    if (isMissing(error)) return null;
+    return badOutput();
+  }
+  try {
+    const during = await handle.stat();
+    if (
+      !during.isFile() ||
+      during.size > maxBytes ||
+      during.ino !== before.ino ||
+      during.dev !== before.dev
+    )
+      badOutput();
+    return await handle.readFile({ encoding: "utf8" });
+  } catch {
+    return badOutput();
+  } finally {
+    await handle.close().catch(() => undefined);
   }
 }
 
 async function readJson(file: string): Promise<unknown | null> {
+  const text = await readBounded(file, MAX_JSON_BYTES);
+  if (text === null) return null;
+  let parsed: unknown;
   try {
-    return JSON.parse(await readFile(file, "utf8"));
+    parsed = JSON.parse(text);
   } catch {
-    return null;
+    return badOutput();
+  }
+  if (!isRecord(parsed)) return badOutput();
+  return parsed;
+}
+
+/** Normalized SPKI PEM of an Ed25519 public key, or null if absent. */
+async function readPublicKey(file: string): Promise<string | null> {
+  const text = await readBounded(file, MAX_PUBKEY_BYTES);
+  if (text === null) return null;
+  if (!text.includes("-----BEGIN PUBLIC KEY-----") || /PRIVATE/.test(text))
+    return badOutput();
+  try {
+    const key = createPublicKey(text);
+    if (key.asymmetricKeyType !== "ed25519") return badOutput();
+    return key.export({ type: "spki", format: "pem" }).toString();
+  } catch {
+    return badOutput();
   }
 }
 

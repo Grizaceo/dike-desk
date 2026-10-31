@@ -1,9 +1,16 @@
-import { sql } from "drizzle-orm";
-import { integer, pgTable, text } from "drizzle-orm/pg-core";
 import {
   createSharesTable,
   ownableColumns,
 } from "@agent-native/core/db/schema";
+import { sql } from "drizzle-orm";
+import { integer, pgTable, text } from "drizzle-orm/pg-core";
+
+export const dikeDeskSeedMarkers = pgTable("dike_desk_seed_markers", {
+  key: text("key").primaryKey(),
+  appliedAt: text("applied_at")
+    .notNull()
+    .default(sql`now()`),
+});
 
 // A brief (escrito) is the shareable resource. Citations and review events are
 // children: they inherit the brief's access and are scoped by brief_id.

@@ -1,5 +1,5 @@
 const rawAppName = "dike-desk";
-const rawAppTitle = "Dike Desk";
+const rawAppTitle = "Diké Desk";
 
 const APP_NAME_PLACEHOLDER = "{" + "{APP_NAME}}";
 const APP_TITLE_PLACEHOLDER = "{" + "{APP_TITLE}}";

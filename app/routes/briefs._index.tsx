@@ -3,6 +3,7 @@ import {
   useActionMutation,
   useActionQuery,
 } from "@agent-native/core/client/hooks";
+import { useT } from "@agent-native/core/client/i18n";
 import { IconFileText, IconSparkles } from "@tabler/icons-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
@@ -16,23 +17,22 @@ import { VerdictBadge } from "@/components/briefs/StatusBadge";
 
 export default function BriefsIndexRoute() {
   const navigate = useNavigate();
+  const t = useT();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const { data, isPending } = useActionQuery("list-briefs", {});
   const create = useActionMutation("create-brief", {
     onSuccess: (result) => navigate(`/briefs/${result.id}`),
     onError: (error) =>
-      toast.error(actionErrorMessage(error) ?? "Could not create the brief."),
+      toast.error(actionErrorMessage(error) ?? t("briefs.createFailed")),
   });
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6">
       <header>
-        <h1 className="text-xl font-semibold tracking-tight">Briefs</h1>
+        <h1 className="text-xl font-semibold tracking-tight">{t("briefs.title")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Paste a brief. Diké checks every statutory citation against a dated,
-          hash-identified corpus and refuses what it cannot prove. You decide
-          every fix.
+          {t("briefs.description")}
         </p>
       </header>
 
@@ -45,7 +45,7 @@ export default function BriefsIndexRoute() {
         }}
       >
         <div className="space-y-1.5">
-          <Label htmlFor="brief-title">Title</Label>
+          <Label htmlFor="brief-title">{t("briefs.fieldTitle")}</Label>
           <Input
             id="brief-title"
             value={title}
@@ -54,19 +54,19 @@ export default function BriefsIndexRoute() {
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="brief-body">Text</Label>
+          <Label htmlFor="brief-body">{t("briefs.fieldBody")}</Label>
           <textarea
             id="brief-body"
             value={body}
             onChange={(event) => setBody(event.target.value)}
             rows={8}
             className="w-full rounded-md border border-input bg-background px-3 py-2 font-serif text-sm leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            placeholder="EN LO PRINCIPAL: …"
+            placeholder={t("briefs.bodyPlaceholder")}
           />
         </div>
         <div className="flex flex-wrap gap-2">
           <Button type="submit" disabled={!body.trim() || create.isPending}>
-            Create brief
+            {t("briefs.createButton")}
           </Button>
           <Button
             type="button"
@@ -75,7 +75,7 @@ export default function BriefsIndexRoute() {
             onClick={() => create.mutate({ demo: true })}
           >
             <IconSparkles className="size-4" />
-            Load synthetic demo
+            {t("briefs.loadDemo")}
           </Button>
         </div>
       </form>
@@ -99,7 +99,7 @@ export default function BriefsIndexRoute() {
           ))
         ) : (
           <p className="py-6 text-center text-sm text-muted-foreground">
-            No briefs yet.
+            {t("briefs.empty")}
           </p>
         )}
       </section>
