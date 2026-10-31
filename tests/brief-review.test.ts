@@ -351,7 +351,8 @@ describe("VerdictBadge", () => {
     expect(none.props.children).toBe("verdict.notVerified");
 
     const ok = VerdictBadge({ verdict: "TODAS_VERIFICADAS" });
-    expect(ok.props.status).toBe("verified");
+    expect(ok.props.children).toBe("verdict.allVerified");
+    expect(ok.props.className).toContain(STATUS_STYLES.verified.badge);
 
     const problems = VerdictBadge({ verdict: "CON_PROBLEMAS" });
     expect(problems.props.children).toBe("verdict.hasProblems");
@@ -369,15 +370,17 @@ describe("VerdictBadge", () => {
 
     expect(enUS.verdict).toEqual({
       notVerified: "Not verified",
-      hasProblems: "Has problems",
-      noCitations: "No citations",
-      noCorpus: "No corpus",
+      allVerified: "All exist and are in force",
+      hasProblems: "Some citations are not verified",
+      noCitations: "Diké detected no citations",
+      noCorpus: "Could not verify (no corpus)",
     });
     expect(esES.verdict).toEqual({
       notVerified: "No verificado",
-      hasProblems: "Con problemas",
-      noCitations: "Sin citas",
-      noCorpus: "Sin corpus",
+      allVerified: "Todas existen y están vigentes",
+      hasProblems: "Hay citas sin verificar",
+      noCitations: "Diké no detectó citas",
+      noCorpus: "No se pudo verificar (sin corpus)",
     });
   });
 });

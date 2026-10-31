@@ -768,3 +768,34 @@ describe("statusFor and locate", () => {
     ]);
   });
 });
+
+describe("statusFor (RJ-39)", () => {
+  const base = {
+    cita_raw: "art. 161 CT",
+    gid: null,
+    cuerpo: null,
+    texto_hash: null,
+    vigencia: null,
+    vigencia_legible: null,
+    estado_texto_historico: null,
+    fuente_url: null,
+    fecha_recuperacion: null,
+  };
+  function d(resolucion: string | null) {
+    return { ...base, estado: "FALLO" as const, resolucion };
+  }
+  it.each([
+    ["VERIFICADA", null, "verified"],
+    ["FALLO", "AMBIGUOUS", "ambiguous"],
+    ["FALLO", "UNRESOLVABLE", "refused"],
+    ["FALLO", "NOT_IN_FORCE", "refused"],
+    ["FALLO", "TEMPORAL_UNKNOWN", "refused"],
+    ["FALLO", "HISTORICAL_TEXT_UNAVAILABLE", "refused"],
+    ["FALLO", "PROVENANCE_INCOMPLETE", "refused"],
+    ["FALLO", "RESOLVED", "refused"],
+    ["FALLO", null, "refused"],
+  ] as const)("%s / %s -> %s", async (estado, resolucion, expected) => {
+    const { statusFor } = await load();
+    expect(statusFor({ ...base, estado, resolucion })).toBe(expected);
+  });
+});
