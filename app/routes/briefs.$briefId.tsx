@@ -92,9 +92,15 @@ export default function BriefRoute() {
   } | null>(null);
   useEffect(() => {
     let live = true;
-    fetchAgentEngineStatus()
-      .then((status) => {
-        if (live) setEngineStatus(status as typeof engineStatus);
+    fetchAgentEngineStatus<{
+      configured?: boolean;
+      engine?: string;
+      model?: string;
+      openAiBaseUrlConfigured?: boolean;
+    }>()
+      .then((result) => {
+        if (!live) return;
+        setEngineStatus(result.state === "available" ? result.value : {});
       })
       .catch(() => {
         if (live) setEngineStatus({});

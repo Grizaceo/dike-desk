@@ -46,6 +46,11 @@ export type CommitmentData = {
 };
 
 const PUBLISHED_DIKE_KEY_ID = "3c7b3fde075efbe3";
+const AS_OF_ORIGIN_KEYS: Record<string, string> = {
+  abogado: "commitment.asOfOrigenLawyer",
+  agente: "commitment.asOfOrigenAgent",
+  "motor (fecha de hoy)": "commitment.asOfOrigenEngine",
+};
 const VERIFY_COMMAND =
   "python3 verificar_tercero.py commitment.json commitment.sig.json content-signing-key.pub";
 
@@ -197,7 +202,12 @@ export default function CommitmentPanel({
             <dt className="text-muted-foreground">
               {t("commitment.labelAsOfOrigen")}
             </dt>
-            <dd>{certificate.as_of_origen}</dd>
+            <dd>
+              {(() => {
+                const key = AS_OF_ORIGIN_KEYS[certificate.as_of_origen];
+                return key ? t(key) : certificate.as_of_origen;
+              })()}
+            </dd>
             <dt className="text-muted-foreground">
               {t("commitment.labelEmittedAt")}
             </dt>
